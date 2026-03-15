@@ -4,7 +4,11 @@ import useAuth from '../hooks/useAuth';
 // Auth Pages
 import Login from '../pages/auth/Login';
 
-// Placeholder pages (we will build these as we go)
+// Product Pages
+import AdminProductManagement from '../pages/admin/ProductManagement';
+import ManagerProductManagement from '../pages/manager/ProductManagement';
+
+// Placeholder pages
 const AdminDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Admin Dashboard 🛠️ Coming Soon</div>;
 const ManagerDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Manager Dashboard 🛠️ Coming Soon</div>;
 const CashierPOS = () => <div className="p-8 text-2xl font-bold text-blue-800">Cashier POS Screen 🛠️ Coming Soon</div>;
@@ -26,7 +30,7 @@ const AppRoutes = () => {
     <BrowserRouter>
       <Routes>
 
-        {/* Public Route */}
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -36,11 +40,21 @@ const AppRoutes = () => {
             <AdminDashboard />
           </ProtectedRoute>
         } />
+        <Route path="/admin/products" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminProductManagement />
+          </ProtectedRoute>
+        } />
 
         {/* Manager Routes */}
         <Route path="/manager/dashboard" element={
           <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <ManagerDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/products" element={
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+            <ManagerProductManagement />
           </ProtectedRoute>
         } />
 
@@ -51,7 +65,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
 
-        {/* Default - redirect to login */}
+        {/* Default */}
         <Route path="*" element={<Navigate to="/login" />} />
 
       </Routes>
