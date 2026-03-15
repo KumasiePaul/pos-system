@@ -12,10 +12,13 @@ import ManagerProductManagement from '../pages/manager/ProductManagement';
 import AdminInventoryManagement from '../pages/admin/InventoryManagement';
 import ManagerInventoryManagement from '../pages/manager/InventoryManagement';
 
+// Cashier Pages
+import POSScreen from '../pages/cashier/POSScreen';
+import ReceiptScreen from '../pages/cashier/ReceiptScreen';
+
 // Placeholder pages
 const AdminDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Admin Dashboard 🛠️ Coming Soon</div>;
 const ManagerDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Manager Dashboard 🛠️ Coming Soon</div>;
-const CashierPOS = () => <div className="p-8 text-2xl font-bold text-blue-800">Cashier POS Screen 🛠️ Coming Soon</div>;
 const Unauthorized = () => <div className="p-8 text-2xl font-bold text-red-600">Unauthorized ⛔ You do not have access to this page</div>;
 
 // Protected Route Component
@@ -75,7 +78,12 @@ const AppRoutes = () => {
         {/* Cashier Routes */}
         <Route path="/cashier/pos" element={
           <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier']}>
-            <CashierPOS />
+            <POSScreen />
+          </ProtectedRoute>
+        } />
+        <Route path="/cashier/receipt" element={
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier']}>
+            <ReceiptScreen />
           </ProtectedRoute>
         } />
 
