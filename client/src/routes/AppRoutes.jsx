@@ -8,6 +8,10 @@ import Login from '../pages/auth/Login';
 import AdminProductManagement from '../pages/admin/ProductManagement';
 import ManagerProductManagement from '../pages/manager/ProductManagement';
 
+// Inventory Pages
+import AdminInventoryManagement from '../pages/admin/InventoryManagement';
+import ManagerInventoryManagement from '../pages/manager/InventoryManagement';
+
 // Placeholder pages
 const AdminDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Admin Dashboard 🛠️ Coming Soon</div>;
 const ManagerDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Manager Dashboard 🛠️ Coming Soon</div>;
@@ -45,6 +49,11 @@ const AppRoutes = () => {
             <AdminProductManagement />
           </ProtectedRoute>
         } />
+        <Route path="/admin/inventory" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminInventoryManagement />
+          </ProtectedRoute>
+        } />
 
         {/* Manager Routes */}
         <Route path="/manager/dashboard" element={
@@ -55,6 +64,11 @@ const AppRoutes = () => {
         <Route path="/manager/products" element={
           <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <ManagerProductManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/inventory" element={
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+            <ManagerInventoryManagement />
           </ProtectedRoute>
         } />
 
