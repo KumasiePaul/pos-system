@@ -1,10 +1,7 @@
-function App() {
-  return (
-    <div className="text-3xl font-bold text-blue-500">
-      Tailwind is working!
+import AppRoutes from './routes/AppRoutes';
 
-    </div>
-  )
+function App() {
+  return <AppRoutes />;
 }
 
-export default App
+export default App;
