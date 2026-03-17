@@ -12,6 +12,10 @@ import ManagerProductManagement from '../pages/manager/ProductManagement';
 import AdminInventoryManagement from '../pages/admin/InventoryManagement';
 import ManagerInventoryManagement from '../pages/manager/InventoryManagement';
 
+// Customer Pages
+import AdminCustomerManagement from '../pages/admin/CustomerManagement';
+import ManagerCustomerManagement from '../pages/manager/CustomerManagement';
+
 // Cashier Pages
 import POSScreen from '../pages/cashier/POSScreen';
 import ReceiptScreen from '../pages/cashier/ReceiptScreen';
@@ -57,6 +61,11 @@ const AppRoutes = () => {
             <AdminInventoryManagement />
           </ProtectedRoute>
         } />
+        <Route path="/admin/customers" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminCustomerManagement />
+          </ProtectedRoute>
+        } />
 
         {/* Manager Routes */}
         <Route path="/manager/dashboard" element={
@@ -72,6 +81,11 @@ const AppRoutes = () => {
         <Route path="/manager/inventory" element={
           <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <ManagerInventoryManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/manager/customers" element={
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+            <ManagerCustomerManagement />
           </ProtectedRoute>
         } />
 

@@ -6,8 +6,8 @@ import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import salesRoutes from './routes/salesRoutes.js';
-import './models/Customer.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
 
 dotenv.config();
 
@@ -23,7 +23,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/payments', paymentRoutes);
-
+app.use('/api/customers', customerRoutes);
 
 // Test route
 app.get('/', (req, res) => {
