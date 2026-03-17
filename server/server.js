@@ -10,6 +10,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import receiptRoutes from './routes/receiptRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/users', userRoutes);
 
 // Test route
 app.get('/', (req, res) => {

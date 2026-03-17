@@ -1,42 +1,46 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import Layout from '../components/common/Layout';
 
 // Auth Pages
 import Login from '../pages/auth/Login';
+import UnauthorizedPage from '../pages/auth/UnauthorizedPage';
 
-// Product Pages
+// Admin Pages
+import AdminDashboard from '../pages/admin/AdminDashboard';
 import AdminProductManagement from '../pages/admin/ProductManagement';
-import ManagerProductManagement from '../pages/manager/ProductManagement';
-
-// Inventory Pages
 import AdminInventoryManagement from '../pages/admin/InventoryManagement';
-import ManagerInventoryManagement from '../pages/manager/InventoryManagement';
-
-// Customer Pages
 import AdminCustomerManagement from '../pages/admin/CustomerManagement';
-import ManagerCustomerManagement from '../pages/manager/CustomerManagement';
-
-// Report Pages
 import AdminReports from '../pages/admin/Reports';
+import UserManagement from '../pages/admin/UserManagement';
+import BackupRecovery from '../pages/admin/BackupRecovery';
+
+// Manager Pages
+import ManagerDashboard from '../pages/manager/ManagerDashboard';
+import ManagerProductManagement from '../pages/manager/ProductManagement';
+import ManagerInventoryManagement from '../pages/manager/InventoryManagement';
+import ManagerCustomerManagement from '../pages/manager/CustomerManagement';
 import ManagerReports from '../pages/manager/Reports';
 
 // Cashier Pages
 import POSScreen from '../pages/cashier/POSScreen';
 import ReceiptScreen from '../pages/cashier/ReceiptScreen';
 
-// Placeholder pages
-const AdminDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Admin Dashboard 🛠️ Coming Soon</div>;
-const ManagerDashboard = () => <div className="p-8 text-2xl font-bold text-blue-800">Manager Dashboard 🛠️ Coming Soon</div>;
-const Unauthorized = () => <div className="p-8 text-2xl font-bold text-red-600">Unauthorized ⛔ You do not have access to this page</div>;
-
-// Protected Route Component
+// Protected Route with Layout
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
-
   if (loading) return <div className="p-8">Loading...</div>;
   if (!user) return <Navigate to="/login" />;
   if (!allowedRoles.includes(user.role)) return <Navigate to="/unauthorized" />;
+  return <Layout>{children}</Layout>;
+};
 
+// Protected Route without Layout (for POS and Receipt)
+const ProtectedRoutePOS = ({ children, allowedRoles }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-8">Loading...</div>;
+  if (!user) return <Navigate to="/login" />;
+  if (!allowedRoles.includes(user.role)) return <Navigate to="/unauthorized" />;
   return children;
 };
 
@@ -47,7 +51,7 @@ const AppRoutes = () => {
 
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={
@@ -73,6 +77,16 @@ const AppRoutes = () => {
         <Route path="/admin/reports" element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminReports />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/users" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <UserManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/backup" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <BackupRecovery />
           </ProtectedRoute>
         } />
 
@@ -103,16 +117,16 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
 
-        {/* Cashier Routes */}
+        {/* Cashier Routes - No Layout */}
         <Route path="/cashier/pos" element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier']}>
+          <ProtectedRoutePOS allowedRoles={['admin', 'manager', 'cashier']}>
             <POSScreen />
-          </ProtectedRoute>
+          </ProtectedRoutePOS>
         } />
         <Route path="/cashier/receipt" element={
-          <ProtectedRoute allowedRoles={['admin', 'manager', 'cashier']}>
+          <ProtectedRoutePOS allowedRoles={['admin', 'manager', 'cashier']}>
             <ReceiptScreen />
-          </ProtectedRoute>
+          </ProtectedRoutePOS>
         } />
 
         {/* Default */}
