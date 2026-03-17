@@ -1,8 +1,11 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Printer, Plus, ShoppingBag, CheckCircle } from 'lucide-react';
+import useTheme from '../../hooks/useTheme';
 
 const ReceiptScreen = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { isDark } = useTheme();
   const sale = state?.sale;
 
   if (!sale) {
@@ -10,121 +13,157 @@ const ReceiptScreen = () => {
     return null;
   }
 
-  const handleNewSale = () => {
-    navigate('/cashier/pos');
-  };
+  const handleNewSale = () => navigate('/cashier/pos');
+  const handlePrint = () => window.print();
 
-  const handlePrint = () => {
-    window.print();
+  const getPaymentLabel = (method) => {
+    if (method === 'mobile_money') return 'Mobile Money';
+    if (method === 'card') return 'Card Payment';
+    return 'Cash';
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+    <div className={`min-h-screen flex items-center justify-center p-4 ${isDark ? 'bg-slate-900' : 'bg-gray-100'}`}>
+      <div className={`w-full max-w-md rounded-2xl shadow-xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
 
-        {/* Receipt Header */}
-        <div className="text-center p-6 border-b border-dashed border-gray-300">
-          <h1 className="text-2xl font-bold text-blue-800">POS System</h1>
-          <p className="text-gray-500 text-sm mt-1">Official Receipt</p>
-          <p className="text-gray-400 text-xs mt-1">
-            {new Date(sale.createdAt).toLocaleString('en-GH', {
-              weekday: 'long', year: 'numeric',
-              month: 'long', day: 'numeric',
-              hour: '2-digit', minute: '2-digit'
-            })}
-          </p>
+        {/* Success Header */}
+        <div className="bg-blue-600 p-6 text-center">
+          <div className="flex items-center justify-center mb-3">
+            <div className="bg-white bg-opacity-20 rounded-full p-3">
+              <CheckCircle size={32} className="text-white" />
+            </div>
+          </div>
+          <h1 className="text-xl font-bold text-white">Sale Complete!</h1>
+          <p className="text-blue-200 text-sm mt-1">Official Receipt</p>
         </div>
 
-        {/* Transaction Info */}
-        <div className="p-4 border-b border-dashed border-gray-300">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Transaction ID</span>
-            <span className="font-mono">{sale._id.slice(-8).toUpperCase()}</span>
-          </div>
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Cashier</span>
-            <span>{sale.cashier?.name}</span>
-          </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>Payment Method</span>
-            <span className="capitalize">
-              {sale.paymentMethod === 'mobile_money' ? 'Mobile Money' : sale.paymentMethod}
-            </span>
-          </div>
-        </div>
+        {/* Receipt Body */}
+        <div className={`p-6 ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
 
-        {/* Items */}
-        <div className="p-4 border-b border-dashed border-gray-300">
-          <p className="text-xs font-semibold text-gray-600 mb-3 uppercase">Items Purchased</p>
-          {sale.items.map((item, index) => (
-            <div key={index} className="flex justify-between items-center mb-2">
-              <div>
-                <p className="text-sm font-medium text-gray-800">{item.name}</p>
-                <p className="text-xs text-gray-500">
-                  {item.quantity} x GH₵ {Number(item.price).toFixed(2)}
+          {/* Store Info */}
+          <div className={`text-center pb-4 mb-4 border-b border-dashed ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <ShoppingBag size={18} className="text-blue-500" />
+              <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>POS System</h2>
+            </div>
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              {new Date(sale.createdAt).toLocaleString('en-GH', {
+                weekday: 'long', year: 'numeric',
+                month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              })}
+            </p>
+          </div>
+
+          {/* Transaction Info */}
+          <div className={`rounded-xl p-3 mb-4 ${isDark ? 'bg-slate-700' : 'bg-gray-50'}`}>
+            {[
+              { label: 'Transaction ID', value: sale._id.slice(-8).toUpperCase() },
+              { label: 'Cashier', value: sale.cashier?.name },
+              { label: 'Payment Method', value: getPaymentLabel(sale.paymentMethod) },
+            ].map((item, i) => (
+              <div key={i} className="flex justify-between items-center py-1">
+                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{item.label}</span>
+                <span className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-700'}`}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Items */}
+          <div className={`pb-4 mb-4 border-b border-dashed ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              Items Purchased
+            </p>
+            {sale.items.map((item, index) => (
+              <div key={index} className="flex justify-between items-center mb-2">
+                <div>
+                  <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>{item.name}</p>
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {item.quantity} x GH₵ {Number(item.price).toFixed(2)}
+                  </p>
+                </div>
+                <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  GH₵ {Number(item.subtotal).toFixed(2)}
                 </p>
               </div>
-              <p className="text-sm font-semibold text-gray-800">
-                GH₵ {Number(item.subtotal).toFixed(2)}
-              </p>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className={`pb-4 mb-4 border-b border-dashed space-y-2 ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>
+            <div className="flex justify-between">
+              <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Subtotal</span>
+              <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                GH₵ {Number(sale.totalAmount).toFixed(2)}
+              </span>
             </div>
-          ))}
-        </div>
-
-        {/* Totals */}
-        <div className="p-4 border-b border-dashed border-gray-300 space-y-2">
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Subtotal</span>
-            <span>GH₵ {Number(sale.totalAmount).toFixed(2)}</span>
-          </div>
-          {sale.discount > 0 && (
-            <div className="flex justify-between text-sm text-green-600">
-              <span>Discount</span>
-              <span>- GH₵ {Number(sale.discount).toFixed(2)}</span>
+            {sale.discount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-green-500">Discount</span>
+                <span className="text-sm text-green-500">- GH₵ {Number(sale.discount).toFixed(2)}</span>
+              </div>
+            )}
+            {sale.tax > 0 && (
+              <div className="flex justify-between">
+                <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Tax</span>
+                <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  + GH₵ {Number(sale.tax).toFixed(2)}
+                </span>
+              </div>
+            )}
+            <div className={`flex justify-between pt-2 border-t ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>
+              <span className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>Grand Total</span>
+              <span className="text-base font-bold text-blue-500">
+                GH₵ {Number(sale.grandTotal).toFixed(2)}
+              </span>
             </div>
-          )}
-          {sale.tax > 0 && (
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Tax</span>
-              <span>+ GH₵ {Number(sale.tax).toFixed(2)}</span>
+            <div className="flex justify-between">
+              <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Amount Paid</span>
+              <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                GH₵ {Number(sale.amountPaid).toFixed(2)}
+              </span>
             </div>
-          )}
-          <div className="flex justify-between text-base font-bold text-gray-800 border-t border-gray-200 pt-2">
-            <span>Grand Total</span>
-            <span>GH₵ {Number(sale.grandTotal).toFixed(2)}</span>
+            <div className="flex justify-between">
+              <span className="text-sm font-semibold text-green-500">Change</span>
+              <span className="text-sm font-semibold text-green-500">
+                GH₵ {Number(sale.change).toFixed(2)}
+              </span>
+            </div>
           </div>
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Amount Paid</span>
-            <span>GH₵ {Number(sale.amountPaid).toFixed(2)}</span>
+
+          {/* Footer */}
+          <div className="text-center mb-4">
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+              Thank you for your purchase!
+            </p>
+            <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+              Please come again 😊
+            </p>
           </div>
-          <div className="flex justify-between text-sm font-semibold text-blue-800">
-            <span>Change</span>
-            <span>GH₵ {Number(sale.change).toFixed(2)}</span>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={handlePrint}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition duration-200 ${
+                isDark
+                  ? 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+            >
+              <Printer size={16} />
+              Print Receipt
+            </button>
+            <button
+              onClick={handleNewSale}
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition duration-200"
+            >
+              <Plus size={16} />
+              New Sale
+            </button>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="text-center p-4 border-b border-dashed border-gray-300">
-          <p className="text-xs text-gray-400">Thank you for your purchase!</p>
-          <p className="text-xs text-gray-400 mt-1">Please come again 😊</p>
         </div>
-
-        {/* Action Buttons */}
-        <div className="p-4 flex gap-3">
-          <button
-            onClick={handlePrint}
-            className="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-medium text-sm hover:bg-gray-300 transition duration-200"
-          >
-            🖨️ Print Receipt
-          </button>
-          <button
-            onClick={handleNewSale}
-            className="flex-1 bg-blue-800 text-white py-2 rounded font-medium text-sm hover:bg-blue-700 transition duration-200"
-          >
-            + New Sale
-          </button>
-        </div>
-
       </div>
     </div>
   );

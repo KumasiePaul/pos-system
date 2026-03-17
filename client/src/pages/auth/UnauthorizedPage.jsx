@@ -1,8 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+import { ShieldX, ArrowLeft } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import useTheme from '../../hooks/useTheme';
 
 const UnauthorizedPage = () => {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   const handleGoBack = () => {
@@ -12,20 +15,34 @@ const UnauthorizedPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md w-full">
-        <p className="text-6xl mb-4">⛔</p>
-        <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
-        <p className="text-gray-500 text-sm mb-6">
+    <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-slate-900' : 'bg-gray-100'}`}>
+      <div className={`rounded-2xl shadow-xl p-8 text-center max-w-md w-full ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+
+        {/* Icon */}
+        <div className="flex items-center justify-center mb-4">
+          <div className="bg-red-500 bg-opacity-20 rounded-full p-4">
+            <ShieldX size={40} className="text-red-500" />
+          </div>
+        </div>
+
+        {/* Text */}
+        <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+          Access Denied
+        </h1>
+        <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
           You don't have permission to access this page.
           Please contact your administrator if you think this is a mistake.
         </p>
+
+        {/* Button */}
         <button
           onClick={handleGoBack}
-          className="bg-blue-800 text-white px-6 py-2 rounded font-medium hover:bg-blue-700 transition duration-200"
+          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition duration-200 mx-auto"
         >
+          <ArrowLeft size={16} />
           Go Back to Dashboard
         </button>
+
       </div>
     </div>
   );

@@ -1,17 +1,13 @@
 import { useState, useEffect } from 'react';
+import useTheme from '../../hooks/useTheme';
 
 const ProductForm = ({ onSubmit, initialData, onCancel }) => {
+  const { isDark } = useTheme();
   const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    price: '',
-    quantity: '',
-    barcode: '',
-    supplier: '',
-    description: ''
+    name: '', category: '', price: '',
+    quantity: '', barcode: '', supplier: '', description: ''
   });
 
-  // If editing, populate form with existing data
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -35,121 +31,54 @@ const ProductForm = ({ onSubmit, initialData, onCancel }) => {
     onSubmit(formData);
   };
 
+  const input = `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+    isDark
+      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+      : 'bg-white border-gray-300 text-gray-800'
+  }`;
+
+  const label = `block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`;
+
+  const fields = [
+    { name: 'name', label: 'Product Name *', type: 'text', placeholder: 'Enter product name', required: true },
+    { name: 'category', label: 'Category *', type: 'text', placeholder: 'e.g. Drinks, Food', required: true },
+    { name: 'price', label: 'Price (GH₵) *', type: 'number', placeholder: '0.00', required: true },
+    { name: 'quantity', label: 'Quantity *', type: 'number', placeholder: '0', required: true },
+    { name: 'barcode', label: 'Barcode', type: 'text', placeholder: 'Enter barcode', required: false },
+    { name: 'supplier', label: 'Supplier', type: 'text', placeholder: 'Enter supplier name', required: false },
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Product Name *
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            placeholder="Enter product name"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category *
-          </label>
-          <input
-            type="text"
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            required
-            placeholder="e.g. Drinks, Food"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Price */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Price (GH₵) *
-          </label>
-          <input
-            type="number"
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            required
-            placeholder="0.00"
-            min="0"
-            step="0.01"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Quantity */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Quantity *
-          </label>
-          <input
-            type="number"
-            name="quantity"
-            value={formData.quantity}
-            onChange={handleChange}
-            required
-            placeholder="0"
-            min="0"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Barcode */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Barcode
-          </label>
-          <input
-            type="text"
-            name="barcode"
-            value={formData.barcode}
-            onChange={handleChange}
-            placeholder="Enter barcode"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Supplier */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Supplier
-          </label>
-          <input
-            type="text"
-            name="supplier"
-            value={formData.supplier}
-            onChange={handleChange}
-            placeholder="Enter supplier name"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
+        {fields.map(field => (
+          <div key={field.name}>
+            <label className={label}>{field.label}</label>
+            <input
+              type={field.type}
+              name={field.name}
+              value={formData[field.name]}
+              onChange={handleChange}
+              required={field.required}
+              placeholder={field.placeholder}
+              min={field.type === 'number' ? '0' : undefined}
+              step={field.name === 'price' ? '0.01' : undefined}
+              className={input}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
-        </label>
+        <label className={label}>Description</label>
         <textarea
           name="description"
           value={formData.description}
           onChange={handleChange}
           placeholder="Enter product description"
           rows={3}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          className={input}
         />
       </div>
 
@@ -157,14 +86,18 @@ const ProductForm = ({ onSubmit, initialData, onCancel }) => {
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          className="bg-blue-800 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700 transition duration-200"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition duration-200 shadow"
         >
           {initialData ? 'Update Product' : 'Add Product'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="bg-gray-200 text-gray-700 px-6 py-2 rounded text-sm font-medium hover:bg-gray-300 transition duration-200"
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition duration-200 ${
+            isDark
+              ? 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+          }`}
         >
           Cancel
         </button>

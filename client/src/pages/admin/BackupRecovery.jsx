@@ -1,12 +1,17 @@
 import { useState } from 'react';
+import { Download, Package, Users, ShoppingCart, UserCog, Info } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import useTheme from '../../hooks/useTheme';
 import axios from 'axios';
 
 const BackupRecovery = () => {
   const { token } = useAuth();
+  const { isDark } = useTheme();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const card = `rounded-xl shadow p-6 ${isDark ? 'bg-slate-800' : 'bg-white'}`;
 
   const handleExportData = async (collection) => {
     try {
@@ -25,7 +30,6 @@ const BackupRecovery = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Create and download JSON file
       const dataStr = JSON.stringify(res.data, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -49,26 +53,30 @@ const BackupRecovery = () => {
     {
       collection: 'products',
       label: 'Products',
-      emoji: '📦',
-      description: 'Export all product data including prices and stock levels'
+      description: 'Export all product data including prices and stock levels',
+      icon: Package,
+      color: 'bg-blue-500'
     },
     {
       collection: 'customers',
       label: 'Customers',
-      emoji: '👥',
-      description: 'Export all customer records including loyalty points'
+      description: 'Export all customer records including loyalty points',
+      icon: Users,
+      color: 'bg-green-500'
     },
     {
       collection: 'sales',
       label: 'Sales',
-      emoji: '🧾',
-      description: 'Export all sales transactions and receipts'
+      description: 'Export all sales transactions and receipts',
+      icon: ShoppingCart,
+      color: 'bg-yellow-500'
     },
     {
       collection: 'users',
       label: 'Users',
-      emoji: '👤',
-      description: 'Export all system user accounts and roles'
+      description: 'Export all system user accounts and roles',
+      icon: UserCog,
+      color: 'bg-purple-500'
     }
   ];
 
@@ -77,65 +85,70 @@ const BackupRecovery = () => {
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-blue-800">Backup & Recovery</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-blue-800'}`}>
+          Backup & Recovery
+        </h1>
+        <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
           Export your data as JSON files for backup and recovery
         </p>
       </div>
 
-      {/* Success Message */}
       {message && (
-        <div className="bg-green-100 text-green-600 p-3 rounded mb-4 text-sm">
+        <div className="bg-green-500 bg-opacity-10 border border-green-500 text-green-500 p-3 rounded-lg mb-4 text-sm">
           ✅ {message}
         </div>
       )}
-
-      {/* Error Message */}
       {error && (
-        <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
-          ❌ {error}
+        <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 p-3 rounded-lg mb-4 text-sm">
+          ⚠️ {error}
         </div>
       )}
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <p className="text-sm text-blue-700 font-medium mb-1">
-          ℹ️ How Backup Works
-        </p>
-        <p className="text-xs text-blue-600">
-          Clicking any export button below will download a JSON file of that
-          collection to your computer. Store these files in a safe location.
-          You can use them to restore data if needed.
-        </p>
+      <div className={`rounded-xl p-4 mb-6 flex gap-3 ${
+        isDark ? 'bg-blue-500 bg-opacity-10 border border-blue-500 border-opacity-30' : 'bg-blue-50 border border-blue-200'
+      }`}>
+        <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm text-blue-500 font-medium mb-1">How Backup Works</p>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-blue-600'}`}>
+            Clicking any export button below will download a JSON file of that collection
+            to your computer. Store these files in a safe location. You can use them to
+            restore data if needed.
+          </p>
+        </div>
       </div>
 
       {/* Backup Cards */}
       <div className="grid grid-cols-2 gap-4">
-        {backupItems.map((item) => (
-          <div
-            key={item.collection}
-            className="bg-white rounded-lg shadow p-6"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-3xl mb-2">{item.emoji}</p>
-                <h3 className="text-base font-semibold text-gray-700">
-                  {item.label} Backup
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  {item.description}
-                </p>
+        {backupItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.collection} className={card}>
+              <div className="flex items-start gap-4">
+                <div className={`${item.color} p-3 rounded-xl`}>
+                  <Icon size={24} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                    {item.label} Backup
+                  </h3>
+                  <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {item.description}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => handleExportData(item.collection)}
+                disabled={loading}
+                className="mt-4 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium transition duration-200 disabled:opacity-50"
+              >
+                <Download size={16} />
+                Export {item.label}
+              </button>
             </div>
-            <button
-              onClick={() => handleExportData(item.collection)}
-              disabled={loading}
-              className="mt-4 w-full bg-blue-800 text-white py-2 rounded text-sm font-medium hover:bg-blue-700 transition duration-200 disabled:opacity-50"
-            >
-              {loading ? 'Exporting...' : `Export ${item.label}`}
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
     </div>

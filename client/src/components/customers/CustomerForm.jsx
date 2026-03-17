@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
+import useTheme from '../../hooks/useTheme';
 
 const CustomerForm = ({ onSubmit, initialData, onCancel }) => {
+  const { isDark } = useTheme();
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    address: ''
+    name: '', phone: '', email: '', address: ''
   });
 
   useEffect(() => {
@@ -28,86 +27,52 @@ const CustomerForm = ({ onSubmit, initialData, onCancel }) => {
     onSubmit(formData);
   };
 
+  const input = `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+    isDark
+      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+      : 'bg-white border-gray-300 text-gray-800'
+  }`;
+
+  const label = `block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`;
+
+  const fields = [
+    { name: 'name', label: 'Full Name *', type: 'text', placeholder: 'Enter full name', required: true },
+    { name: 'phone', label: 'Phone Number *', type: 'text', placeholder: 'e.g. 0244123456', required: true },
+    { name: 'email', label: 'Email Address', type: 'email', placeholder: 'Enter email address', required: false },
+    { name: 'address', label: 'Address', type: 'text', placeholder: 'Enter address', required: false },
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Full Name *
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            placeholder="Enter full name"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Phone */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone Number *
-          </label>
-          <input
-            type="text"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            required
-            placeholder="e.g. 0244123456"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email Address
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Enter email address"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Address */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address
-          </label>
-          <input
-            type="text"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            placeholder="Enter address"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
+        {fields.map(field => (
+          <div key={field.name}>
+            <label className={label}>{field.label}</label>
+            <input
+              type={field.type}
+              name={field.name}
+              value={formData[field.name]}
+              onChange={handleChange}
+              required={field.required}
+              placeholder={field.placeholder}
+              className={input}
+            />
+          </div>
+        ))}
       </div>
-
-      {/* Buttons */}
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          className="bg-blue-800 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700 transition duration-200"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition duration-200 shadow"
         >
           {initialData ? 'Update Customer' : 'Register Customer'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="bg-gray-200 text-gray-700 px-6 py-2 rounded text-sm font-medium hover:bg-gray-300 transition duration-200"
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition duration-200 ${
+            isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+          }`}
         >
           Cancel
         </button>

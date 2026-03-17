@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
+import { TrendingUp, ShoppingCart, Package, Users, UserCog, RefreshCw } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import useTheme from '../../hooks/useTheme';
 import {
-  getSummary,
-  getDailySales,
-  getWeeklySales,
-  getProductPerformance,
-  getCashierPerformance
+  getSummary, getDailySales, getWeeklySales,
+  getProductPerformance, getCashierPerformance
 } from '../../services/reportService';
 import SalesChart from '../../components/reports/SalesChart';
 import ReportTable from '../../components/reports/ReportTable';
 
 const Reports = () => {
   const { token } = useAuth();
+  const { isDark } = useTheme();
   const [summary, setSummary] = useState(null);
   const [dailySales, setDailySales] = useState(null);
   const [weeklySales, setWeeklySales] = useState([]);
@@ -20,29 +20,23 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchAllReports();
-  }, []);
+  const card = `rounded-xl shadow p-5 ${isDark ? 'bg-slate-800' : 'bg-white'}`;
+
+  useEffect(() => { fetchAllReports(); }, []);
 
   const fetchAllReports = async () => {
     try {
       setLoading(true);
-
       const [summaryData, dailyData, weeklyData, productData, cashierData] =
         await Promise.allSettled([
-          getSummary(token),
-          getDailySales(token),
-          getWeeklySales(token),
-          getProductPerformance(token),
-          getCashierPerformance(token)
+          getSummary(token), getDailySales(token), getWeeklySales(token),
+          getProductPerformance(token), getCashierPerformance(token)
         ]);
-
       if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
       if (dailyData.status === 'fulfilled') setDailySales(dailyData.value);
       if (weeklyData.status === 'fulfilled') setWeeklySales(weeklyData.value);
       if (productData.status === 'fulfilled') setProductPerformance(productData.value);
       if (cashierData.status === 'fulfilled') setCashierPerformance(cashierData.value);
-
     } catch (err) {
       setError('Failed to load reports');
     } finally {
@@ -52,100 +46,116 @@ const Reports = () => {
 
   if (loading) {
     return (
-      <div className="p-6 text-center text-gray-500">
-        Loading reports...
+      <div className="p-6 flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Loading reports...</p>
+        </div>
       </div>
     );
   }
+
+  const summaryItems = summary ? [
+    { label: 'Total Revenue', value: `GH₵ ${Number(summary.totalRevenue).toFixed(2)}`, icon: TrendingUp, color: 'bg-blue-500' },
+    { label: 'Total Transactions', value: summary.totalTransactions, icon: ShoppingCart, color: 'bg-green-500' },
+    { label: 'Total Products', value: summary.totalProducts, icon: Package, color: 'bg-yellow-500' },
+    { label: 'Total Customers', value: summary.totalCustomers, icon: Users, color: 'bg-purple-500' },
+    { label: 'Total Users', value: summary.totalUsers, icon: UserCog, color: 'bg-red-500' },
+  ] : [];
+
+  const dailyItems = dailySales ? [
+    { label: "Today's Revenue", value: `GH₵ ${Number(dailySales.totalRevenue).toFixed(2)}`, icon: TrendingUp },
+    { label: "Today's Transactions", value: dailySales.totalTransactions, icon: ShoppingCart },
+    { label: 'Items Sold Today', value: dailySales.totalItemsSold, icon: Package },
+  ] : [];
 
   return (
     <div className="p-6">
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-blue-800">Reports & Analytics</h1>
-        <p className="text-gray-500 text-sm mt-1">Business performance overview</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-blue-800'}`}>
+            Reports & Analytics
+          </h1>
+          <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+            Business performance overview
+          </p>
+        </div>
+        <button
+          onClick={fetchAllReports}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+        >
+          <RefreshCw size={16} />
+          Refresh
+        </button>
       </div>
 
       {error && (
-        <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
-          {error}
+        <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-500 p-3 rounded-lg mb-4 text-sm">
+          ⚠️ {error}
         </div>
       )}
 
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Total Revenue</p>
-            <p className="text-xl font-bold text-blue-800">
-              GH₵ {Number(summary.totalRevenue).toFixed(2)}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Total Transactions</p>
-            <p className="text-xl font-bold text-blue-800">
-              {summary.totalTransactions}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Total Products</p>
-            <p className="text-xl font-bold text-blue-800">
-              {summary.totalProducts}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Total Customers</p>
-            <p className="text-xl font-bold text-blue-800">
-              {summary.totalCustomers}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Total Users</p>
-            <p className="text-xl font-bold text-blue-800">
-              {summary.totalUsers}
-            </p>
-          </div>
+          {summaryItems.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <div key={i} className={card}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {item.label}
+                  </p>
+                  <div className={`${item.color} p-1.5 rounded-lg`}>
+                    <Icon size={14} className="text-white" />
+                  </div>
+                </div>
+                <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-blue-800'}`}>
+                  {item.value}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Today's Sales */}
+      {/* Today's Stats */}
       {dailySales && (
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Today's Revenue</p>
-            <p className="text-xl font-bold text-green-700">
-              GH₵ {Number(dailySales.totalRevenue).toFixed(2)}
-            </p>
-          </div>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Today's Transactions</p>
-            <p className="text-xl font-bold text-green-700">
-              {dailySales.totalTransactions}
-            </p>
-          </div>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">Items Sold Today</p>
-            <p className="text-xl font-bold text-green-700">
-              {dailySales.totalItemsSold}
-            </p>
-          </div>
+          {dailyItems.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <div key={i} className={`${card} border ${isDark ? 'border-green-500 border-opacity-30' : 'border-green-200'}`}>
+                <div className="flex items-center gap-3">
+                  <Icon size={20} className="text-green-500" />
+                  <div>
+                    <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                      {item.label}
+                    </p>
+                    <p className={`text-xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                      {item.value}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Weekly Sales Chart */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-base font-semibold text-gray-700 mb-4">
+      {/* Weekly Chart */}
+      <div className={`${card} mb-6`}>
+        <h2 className={`text-base font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-700'}`}>
           Weekly Sales Chart
         </h2>
         <SalesChart data={weeklySales} />
       </div>
 
-      {/* Product Performance & Cashier Performance */}
-      <div className="grid grid-cols-2 gap-6 mb-6">
-
-        {/* Product Performance */}
-        <div className="bg-white rounded-lg shadow p-6">
+      {/* Tables */}
+      <div className="grid grid-cols-2 gap-6">
+        <div className={card}>
           <ReportTable
             title="Product Performance"
             headers={['Product', 'Qty Sold', 'Revenue']}
@@ -157,9 +167,7 @@ const Reports = () => {
             emptyMessage="No product sales data available."
           />
         </div>
-
-        {/* Cashier Performance */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className={card}>
           <ReportTable
             title="Cashier Performance"
             headers={['Cashier', 'Total Sales', 'Revenue']}
@@ -171,7 +179,6 @@ const Reports = () => {
             emptyMessage="No cashier performance data available."
           />
         </div>
-
       </div>
 
     </div>
