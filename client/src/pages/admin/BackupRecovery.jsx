@@ -105,20 +105,23 @@ const BackupRecovery = () => {
       )}
 
       {/* Info Box */}
-      <div className={`rounded-xl p-4 mb-6 flex gap-3 ${
-        isDark ? 'bg-blue-500 bg-opacity-10 border border-blue-500 border-opacity-30' : 'bg-blue-50 border border-blue-200'
-      }`}>
-        <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm text-blue-500 font-medium mb-1">How Backup Works</p>
-          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-blue-600'}`}>
-            Clicking any export button below will download a JSON file of that collection
-            to your computer. Store these files in a safe location. You can use them to
-            restore data if needed.
-          </p>
-        </div>
-      </div>
-
+     <div className={`rounded-xl p-4 mb-6 flex gap-3 ${
+  isDark
+    ? 'bg-blue-600 border border-blue-500'
+    : 'bg-blue-50 border border-blue-200'
+}`}>
+  <Info size={18} className={`shrink-0 mt-0.5 ${isDark ? 'text-white' : 'text-blue-500'}`} />
+  <div>
+    <p className={`text-sm font-medium mb-1 ${isDark ? 'text-white' : 'text-blue-700'}`}>
+      How Backup Works
+    </p>
+    <p className={`text-xs ${isDark ? 'text-blue-100' : 'text-blue-600'}`}>
+      Clicking any export button below will download a JSON file of that collection
+      to your computer. Store these files in a safe location. You can use them to
+      restore data if needed.
+    </p>
+  </div>
+</div>
       {/* Backup Cards */}
       <div className="grid grid-cols-2 gap-4">
         {backupItems.map((item) => {

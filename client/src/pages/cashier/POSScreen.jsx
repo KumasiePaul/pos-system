@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, X, CreditCard, Smartphone, Banknote, LogOut } from 'lucide-react';
+import { Search, ShoppingCart, X, CreditCard, Smartphone, Banknote, LogOut, AlertTriangle } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
 import useCart from '../../hooks/useCart';
@@ -22,6 +22,7 @@ const POSScreen = () => {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountPaid, setAmountPaid] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -83,7 +84,7 @@ const POSScreen = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogoutConfirm = () => {
     logout();
     navigate('/login');
   };
@@ -117,7 +118,7 @@ const POSScreen = () => {
             })}
           </p>
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutModal(true)}
             className="flex items-center gap-2 bg-blue-700 hover:bg-red-600 text-white text-sm px-3 py-1.5 rounded-lg transition duration-200"
           >
             <LogOut size={14} />
@@ -318,6 +319,50 @@ const POSScreen = () => {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className={`rounded-2xl shadow-2xl p-6 w-full max-w-sm ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-500 bg-opacity-20 rounded-full p-2">
+                  <AlertTriangle size={20} className="text-red-500" />
+                </div>
+                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                  Confirm Logout
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+              Are you sure you want to log out? Your current cart will be cleared.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleLogoutConfirm}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl text-sm font-medium transition duration-200"
+              >
+                <LogOut size={16} />
+                Yes, Logout
+              </button>
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition duration-200 ${
+                  isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
