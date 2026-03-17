@@ -8,6 +8,7 @@ import inventoryRoutes from './routes/inventoryRoutes.js';
 import salesRoutes from './routes/salesRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
+import receiptRoutes from './routes/receiptRoutes.js';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/receipts', receiptRoutes);
 
 // Test route
 app.get('/', (req, res) => {
