@@ -7,6 +7,22 @@ const StockTable = ({ inventory, onUpdate, onAdjust }) => {
   const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider`;
   const td = `px-4 py-3 text-sm`;
 
+  const getStockBadge = (item) => {
+    if (item.stockQuantity === 0)
+      return <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-600 text-white">Out of Stock</span>;
+    if (item.stockQuantity <= item.lowStockThreshold)
+      return <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-yellow-500 text-white">Low Stock</span>;
+    return <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-green-500 text-white">In Stock</span>;
+  };
+
+  const getQtyBadge = (item) => {
+    if (item.stockQuantity === 0)
+      return <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-red-600 text-white">0</span>;
+    if (item.stockQuantity <= item.lowStockThreshold)
+      return <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-yellow-500 text-white">{item.stockQuantity}</span>;
+    return <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-green-500 text-white">{item.stockQuantity}</span>;
+  };
+
   if (inventory.length === 0) {
     return (
       <div className={`text-center py-8 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
@@ -35,57 +51,27 @@ const StockTable = ({ inventory, onUpdate, onAdjust }) => {
                   : index % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'
               }`}
             >
-              <td className={`${td} font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                {item.product?.name}
-              </td>
-              <td className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-                {item.product?.category}
-              </td>
-              <td className={`${td}`}>
-                <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-                  item.stockQuantity <= item.lowStockThreshold
-                    ? 'bg-red-500 text-white'
-                    : 'bg-green-500 text-white'
-                }`}>
-                  {item.stockQuantity}
-                </span>
-              </td>
-              <td className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-                {item.lowStockThreshold}
-              </td>
-              <td className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-                {item.supplier || '—'}
-              </td>
+              <td className={`${td} font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>{item.product?.name}</td>
+              <td className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>{item.product?.category}</td>
+              <td className={td}>{getQtyBadge(item)}</td>
+              <td className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>{item.lowStockThreshold}</td>
+              <td className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>{item.supplier || '—'}</td>
               <td className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
                 {new Date(item.lastRestocked).toLocaleDateString()}
               </td>
-              <td className={`${td}`}>
-                <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-                  item.stockQuantity <= item.lowStockThreshold
-                    ? 'bg-red-500 text-white'
-                    : 'bg-green-500 text-white'
-                }`}>
-                  {item.stockQuantity <= item.lowStockThreshold ? 'Low Stock' : 'In Stock'}
-                </span>
-              </td>
-              <td className={`${td}`}>
+              <td className={td}>{getStockBadge(item)}</td>
+              <td className={td}>
                 <div className="flex gap-2">
                   {onUpdate && (
-                    <button
-                      onClick={() => onUpdate(item)}
-                      className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200"
-                    >
-                      <Pencil size={12} />
-                      Update
+                    <button onClick={() => onUpdate(item)}
+                      className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200">
+                      <Pencil size={12} /> Update
                     </button>
                   )}
                   {onAdjust && (
-                    <button
-                      onClick={() => onAdjust(item)}
-                      className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200"
-                    >
-                      <SlidersHorizontal size={12} />
-                      Adjust
+                    <button onClick={() => onAdjust(item)}
+                      className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200">
+                      <SlidersHorizontal size={12} /> Adjust
                     </button>
                   )}
                 </div>

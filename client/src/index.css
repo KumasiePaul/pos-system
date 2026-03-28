@@ -32,3 +32,34 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide everything, then reveal only the receipt card */
+  body * {
+    visibility: hidden;
+  }
+
+  #receipt-card,
+  #receipt-card * {
+    visibility: visible;
+  }
+
+  #receipt-card {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-shadow: none;
+    border-radius: 0;
+  }
+}

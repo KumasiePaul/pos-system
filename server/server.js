@@ -33,7 +33,7 @@ app.use('/api/users', userRoutes);
 
 // Test route
 app.get('/', (req, res) => {
-  res.json({ message: 'POS System API is running...' });
+  res.json({ message: 'SaleSync API is running...' });
 });
 
 // Database connection

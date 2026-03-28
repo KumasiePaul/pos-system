@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Printer, Plus, ShoppingBag, CheckCircle } from 'lucide-react';
+import { Printer, Plus, ShoppingBag, Receipt, BarChart2, Package, Users } from 'lucide-react';
 import useTheme from '../../hooks/useTheme';
 
 const ReceiptScreen = () => {
@@ -23,14 +23,31 @@ const ReceiptScreen = () => {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${isDark ? 'bg-slate-900' : 'bg-gray-100'}`}>
-      <div className={`w-full max-w-md rounded-2xl shadow-xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+    <div className={`min-h-screen flex items-center justify-center p-4 relative overflow-hidden print:bg-white print:block print:p-0 ${
+      isDark
+        ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900'
+        : 'bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700'
+    }`}>
+
+      {/* Decorative background icons — hidden when printing */}
+      <div className="absolute inset-0 pointer-events-none print:hidden">
+        <ShoppingBag size={120} className="absolute top-10 left-10 opacity-[0.05] text-white rotate-[-15deg]" />
+        <Receipt    size={100} className="absolute top-1/4 right-16 opacity-[0.05] text-white rotate-[10deg]" />
+        <BarChart2  size={90}  className="absolute bottom-20 left-20 opacity-[0.05] text-white rotate-[5deg]" />
+        <Package    size={110} className="absolute bottom-10 right-10 opacity-[0.05] text-white rotate-[-10deg]" />
+        <Users      size={80}  className="absolute top-1/2 left-1/3 opacity-[0.04] text-white rotate-[8deg]" />
+        {/* Glowing blobs */}
+        <div className={`absolute -top-20 -left-20 w-72 h-72 rounded-full blur-3xl opacity-20 ${isDark ? 'bg-blue-600' : 'bg-white'}`} />
+        <div className={`absolute -bottom-20 -right-20 w-72 h-72 rounded-full blur-3xl opacity-20 ${isDark ? 'bg-indigo-600' : 'bg-indigo-200'}`} />
+      </div>
+
+      <div id="receipt-card" className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative z-10 ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
 
         {/* Success Header */}
         <div className="bg-blue-600 p-6 text-center">
           <div className="flex items-center justify-center mb-3">
             <div className="bg-white bg-opacity-20 rounded-full p-3">
-              <CheckCircle size={32} className="text-white" />
+              <ShoppingBag size={32} className="text-white" />
             </div>
           </div>
           <h1 className="text-xl font-bold text-white">Sale Complete!</h1>
@@ -44,7 +61,7 @@ const ReceiptScreen = () => {
           <div className={`text-center pb-4 mb-4 border-b border-dashed ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>
             <div className="flex items-center justify-center gap-2 mb-1">
               <ShoppingBag size={18} className="text-blue-500" />
-              <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>POS System</h2>
+              <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>SaleSync</h2>
             </div>
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
               {new Date(sale.createdAt).toLocaleString('en-GH', {
@@ -142,7 +159,7 @@ const ReceiptScreen = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 print:hidden">
             <button
               onClick={handlePrint}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition duration-200 ${
@@ -168,5 +185,6 @@ const ReceiptScreen = () => {
     </div>
   );
 };
+
 
 export default ReceiptScreen;

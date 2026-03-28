@@ -1,5 +1,7 @@
 import useTheme from '../../hooks/useTheme';
 
+const rankColors = ['text-yellow-500', 'text-slate-400', 'text-amber-600'];
+
 const ReportTable = ({ title, headers, rows, emptyMessage }) => {
   const { isDark } = useTheme();
 
@@ -8,11 +10,11 @@ const ReportTable = ({ title, headers, rows, emptyMessage }) => {
 
   return (
     <div>
-      <h3 className={`text-base font-semibold mb-3 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+      <h3 className={`text-base font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-700'}`}>
         {title}
       </h3>
       {!rows || rows.length === 0 ? (
-        <div className={`text-center py-6 text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+        <div className={`text-center py-8 text-sm ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
           {emptyMessage || 'No data available.'}
         </div>
       ) : (
@@ -38,7 +40,15 @@ const ReportTable = ({ title, headers, rows, emptyMessage }) => {
                   }`}
                 >
                   {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className={`${td} ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+                    <td key={cellIndex} className={`${td} ${
+                      // rank column
+                      cellIndex === 0
+                        ? `font-bold text-base ${rankColors[rowIndex] || (isDark ? 'text-slate-400' : 'text-gray-400')}`
+                      // last column (revenue) — bold and blue
+                      : cellIndex === row.length - 1
+                        ? `font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`
+                      : isDark ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
                       {cell}
                     </td>
                   ))}

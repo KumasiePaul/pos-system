@@ -1,4 +1,5 @@
 import Product from '../models/Product.js';
+import Inventory from '../models/Inventory.js';
 
 // Get all products
 export const getAllProducts = async (req, res) => {
@@ -38,6 +39,14 @@ export const createProduct = async (req, res) => {
       description
     });
 
+    // Automatically create an inventory record for the new product
+    await Inventory.create({
+      product: product._id,
+      stockQuantity: quantity,
+      lowStockThreshold: 10,
+      supplier: supplier || ''
+    });
+
     res.status(201).json({ message: 'Product created successfully', product });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -57,6 +66,14 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
+    // Keep inventory quantity in sync if quantity was changed
+    if (req.body.quantity !== undefined) {
+      await Inventory.findOneAndUpdate(
+        { product: product._id },
+        { stockQuantity: req.body.quantity }
+      );
+    }
+
     res.status(200).json({ message: 'Product updated successfully', product });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -71,6 +88,9 @@ export const deleteProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
+    // Also remove the inventory record for this product
+    await Inventory.findOneAndDelete({ product: req.params.id });
 
     res.status(200).json({ message: 'Product deleted successfully' });
   } catch (error) {

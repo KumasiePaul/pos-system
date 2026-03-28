@@ -106,7 +106,7 @@ const POSScreen = () => {
         <div className="flex items-center gap-3">
           <ShoppingCart size={22} />
           <div>
-            <h1 className="text-lg font-bold">POS System</h1>
+            <h1 className="text-lg font-bold">SaleSync</h1>
             <p className="text-xs text-blue-200">{user?.name} — Cashier</p>
           </div>
         </div>
@@ -129,7 +129,7 @@ const POSScreen = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-500 bg-opacity-10 border-b border-red-500 text-red-500 px-6 py-2 text-sm">
+        <div className="bg-red-100 border-b border-red-400 text-red-700 px-6 py-2 text-sm font-medium">
           ⚠️ {error}
         </div>
       )}
@@ -168,18 +168,23 @@ const POSScreen = () => {
                 No products found
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
                 {products.map(product => (
                   <button
                     key={product._id}
                     onClick={() => addToCart(product)}
                     disabled={product.quantity === 0}
-                    className={`rounded-xl p-4 text-left transition duration-200 shadow ${
+                    className={`rounded-xl p-4 text-left transition duration-200 shadow relative overflow-hidden ${
                       product.quantity === 0
-                        ? `opacity-50 cursor-not-allowed ${isDark ? 'bg-slate-800' : 'bg-white'}`
+                        ? `cursor-not-allowed ${isDark ? 'bg-slate-800' : 'bg-white'}`
                         : `${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-white hover:bg-blue-50'} hover:shadow-md`
                     }`}
                   >
+                    {product.quantity === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl z-10">
+                        <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md">Out of Stock</span>
+                      </div>
+                    )}
                     <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
                       {product.name}
                     </p>
@@ -190,9 +195,9 @@ const POSScreen = () => {
                       GH₵ {Number(product.price).toFixed(2)}
                     </p>
                     <p className={`text-xs mt-1 font-medium ${
-                      product.quantity <= 10 ? 'text-red-400' : 'text-green-500'
+                      product.quantity === 0 ? 'text-red-500' : product.quantity <= 10 ? 'text-yellow-500' : 'text-green-500'
                     }`}>
-                      Stock: {product.quantity}
+                      {product.quantity === 0 ? 'Out of stock' : `Stock: ${product.quantity}`}
                     </p>
                   </button>
                 ))}
@@ -210,15 +215,21 @@ const POSScreen = () => {
 
       {/* Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-black/30">
           <div className={`rounded-2xl shadow-2xl p-6 w-full max-w-md ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
 
-            <div className="flex justify-between items-center mb-4">
-              <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                Payment
-              </h2>
+            <div className="flex justify-between items-center mb-5">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 p-2 rounded-xl">
+                  <CreditCard size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>Payment</h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart</p>
+                </div>
+              </div>
               <button onClick={() => setShowPaymentModal(false)}
-                className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+                className={`p-1 rounded-lg transition ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}>
                 <X size={18} />
               </button>
             </div>
@@ -248,7 +259,7 @@ const POSScreen = () => {
                         onClick={() => setPaymentMethod(method.id)}
                         className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition duration-200 ${
                           paymentMethod === method.id
-                            ? 'border-blue-500 bg-blue-500 bg-opacity-20 text-blue-500'
+                            ? 'border-blue-600 bg-blue-600 text-white'
                             : `${isDark ? 'border-slate-600 text-slate-300 hover:border-blue-500' : 'border-gray-200 text-gray-600 hover:border-blue-400'}`
                         }`}
                       >
@@ -325,7 +336,7 @@ const POSScreen = () => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-black/30">
           <div className={`rounded-2xl shadow-2xl p-6 w-full max-w-sm ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3">

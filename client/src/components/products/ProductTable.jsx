@@ -70,7 +70,7 @@ const ProductTable = ({ products, onEdit, onDelete }) => {
                   </button>
                   {onDelete && (
                     <button
-                      onClick={() => onDelete(product._id)}
+                      onClick={() => onDelete(product)}
                       className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200"
                     >
                       <Trash2 size={12} />

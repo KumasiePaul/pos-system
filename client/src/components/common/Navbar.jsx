@@ -1,19 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Sun, Moon, LogOut, User, X, AlertTriangle } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, User, X, AlertTriangle, Bell, Package, AlertCircle, ShoppingCart } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
+import { getLowStockItems } from '../../services/inventoryService';
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notifRef = useRef(null);
+
+  // Fetch low stock notifications (only for admin and manager)
+  useEffect(() => {
+    if (!user || user.role === 'cashier') return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const fetchNotifications = async () => {
+      try {
+        const lowStockItems = await getLowStockItems(token);
+        const built = [];
+
+        lowStockItems.forEach((item) => {
+          const name = item.product?.name || 'Unknown Product';
+          const qty = item.stockQuantity;
+          const threshold = item.lowStockThreshold;
+
+          if (qty === 0) {
+            built.push({
+              id: item._id,
+              type: 'critical',
+              icon: 'alert',
+              title: 'Out of Stock',
+              message: `${name} is completely out of stock.`,
+            });
+          } else {
+            built.push({
+              id: item._id,
+              type: 'warning',
+              icon: 'package',
+              title: 'Low Stock',
+              message: `${name} has only ${qty} left (threshold: ${threshold}).`,
+            });
+          }
+        });
+
+        setNotifications(built);
+        setUnreadCount(built.length);
+      } catch {
+        // silently fail
+      }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000); // refresh every 1 min
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleOpenNotifications = () => {
+    setShowNotifications((prev) => !prev);
+    setUnreadCount(0);
+  };
 
   const handleLogoutConfirm = () => {
     logout();
     navigate('/login');
   };
+
+  const criticalCount = notifications.filter((n) => n.type === 'critical').length;
+  const warningCount  = notifications.filter((n) => n.type === 'warning').length;
 
   return (
     <>
@@ -27,7 +99,7 @@ const Navbar = ({ onMenuClick }) => {
           >
             <Menu size={22} />
           </button>
-          <h1 className="text-lg font-bold tracking-wide">POS System</h1>
+          <h1 className="text-lg font-bold tracking-wide">SaleSync</h1>
         </div>
 
         {/* Right */}
@@ -41,6 +113,125 @@ const Navbar = ({ onMenuClick }) => {
           >
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+
+          {/* Notification Bell — hidden for cashier */}
+          {user?.role !== 'cashier' && (
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={handleOpenNotifications}
+                className="relative p-2 rounded-lg bg-blue-700 hover:bg-blue-600 transition duration-200"
+                title="Notifications"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown */}
+              {showNotifications && (
+                <div className={`absolute right-0 top-12 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden border ${
+                  isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+                }`}>
+
+                  {/* Header */}
+                  <div className={`flex items-center justify-between px-4 py-3 border-b ${
+                    isDark ? 'border-slate-700' : 'border-gray-100'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <Bell size={16} className="text-blue-400" />
+                      <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                        Notifications
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {notifications.length > 0 && (
+                        <span className="text-xs bg-red-100 text-red-600 font-medium px-2 py-0.5 rounded-full">
+                          {notifications.length} alert{notifications.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary row */}
+                  {notifications.length > 0 && (
+                    <div className={`flex gap-2 px-4 py-2 border-b ${isDark ? 'border-slate-700 bg-slate-900' : 'border-gray-100 bg-gray-50'}`}>
+                      {criticalCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium">
+                          <AlertCircle size={11} /> {criticalCount} Out of Stock
+                        </span>
+                      )}
+                      {warningCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">
+                          <Package size={11} /> {warningCount} Low Stock
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* List */}
+                  <div className="max-h-72 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <ShoppingCart size={32} className={isDark ? 'text-slate-600' : 'text-gray-300'} />
+                        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
+                          All stock levels are good
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => { navigate('/admin/inventory'); setShowNotifications(false); }}
+                          className={`flex items-start gap-3 px-4 py-3 cursor-pointer border-b last:border-0 transition ${
+                            isDark
+                              ? 'border-slate-700 hover:bg-slate-700'
+                              : 'border-gray-100 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className={`mt-0.5 p-1.5 rounded-lg flex-shrink-0 ${
+                            notif.type === 'critical'
+                              ? 'bg-red-100 text-red-500'
+                              : 'bg-yellow-100 text-yellow-600'
+                          }`}>
+                            {notif.type === 'critical'
+                              ? <AlertCircle size={14} />
+                              : <Package size={14} />
+                            }
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`text-xs font-semibold ${
+                              notif.type === 'critical' ? 'text-red-500' : isDark ? 'text-yellow-400' : 'text-yellow-600'
+                            }`}>
+                              {notif.title}
+                            </p>
+                            <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {notif.message}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className={`px-4 py-2.5 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+                      <button
+                        onClick={() => { navigate('/admin/inventory'); setShowNotifications(false); }}
+                        className="w-full text-xs text-blue-500 hover:text-blue-600 font-medium text-center transition"
+                      >
+                        Go to Inventory Management →
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              )}
+            </div>
+          )}
 
           {/* User Info */}
           <div className="flex items-center gap-2">
@@ -67,10 +258,9 @@ const Navbar = ({ onMenuClick }) => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-black/30">
           <div className={`rounded-2xl shadow-2xl p-6 w-full max-w-sm ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
 
-            {/* Header */}
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3">
                 <div className="bg-red-500 bg-opacity-20 rounded-full p-2">
@@ -88,12 +278,10 @@ const Navbar = ({ onMenuClick }) => {
               </button>
             </div>
 
-            {/* Message */}
             <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
               Are you sure you want to log out? Any unsaved changes will be lost.
             </p>
 
-            {/* Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={handleLogoutConfirm}

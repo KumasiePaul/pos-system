@@ -48,7 +48,7 @@ const CustomerTable = ({ customers, onEdit, onDelete, onUpdatePoints }) => {
                 {customer.address || '—'}
               </td>
               <td className={`${td}`}>
-                <span className="flex items-center gap-1 bg-yellow-500 bg-opacity-20 text-yellow-400 px-2 py-1 rounded-lg text-xs font-semibold w-fit">
+                <span className="flex items-center gap-1 bg-yellow-500 text-white px-2 py-1 rounded-lg text-xs font-semibold w-fit">
                   <Star size={10} />
                   {customer.loyaltyPoints} pts
                 </span>
@@ -73,7 +73,7 @@ const CustomerTable = ({ customers, onEdit, onDelete, onUpdatePoints }) => {
                   )}
                   {onDelete && (
                     <button
-                      onClick={() => onDelete(customer._id)}
+                      onClick={() => onDelete(customer)}
                       className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200"
                     >
                       <Trash2 size={12} />
