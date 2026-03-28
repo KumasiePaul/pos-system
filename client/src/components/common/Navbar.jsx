@@ -99,7 +99,7 @@ const Navbar = ({ onMenuClick }) => {
           >
             <Menu size={22} />
           </button>
-          <h1 className="text-lg font-bold tracking-wide">SaleSync</h1>
+          <h1 className="brand-name text-xl">SaleSync</h1>
         </div>
 
         {/* Right */}

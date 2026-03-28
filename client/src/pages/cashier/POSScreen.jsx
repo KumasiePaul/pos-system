@@ -106,7 +106,7 @@ const POSScreen = () => {
         <div className="flex items-center gap-3">
           <ShoppingCart size={22} />
           <div>
-            <h1 className="text-lg font-bold">SaleSync</h1>
+            <h1 className="brand-name text-xl">SaleSync</h1>
             <p className="text-xs text-blue-200">{user?.name} — Cashier</p>
           </div>
         </div>

@@ -61,7 +61,7 @@ const ReceiptScreen = () => {
           <div className={`text-center pb-4 mb-4 border-b border-dashed ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>
             <div className="flex items-center justify-center gap-2 mb-1">
               <ShoppingBag size={18} className="text-blue-500" />
-              <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>SaleSync</h2>
+              <h2 className={`brand-name text-xl ${isDark ? 'text-white' : 'text-gray-800'}`}>SaleSync</h2>
             </div>
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
               {new Date(sale.createdAt).toLocaleString('en-GH', {
