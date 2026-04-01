@@ -5,6 +5,7 @@ import {
   getPaymentBySale,
   getPaymentSummary,
   initiateMobileMoney,
+  submitOtp,
   verifyMobileMoney
 } from '../controllers/paymentController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
@@ -25,6 +26,9 @@ router.get('/sale/:saleId', protect, getPaymentBySale);
 
 // Mobile money - initiate Paystack charge
 router.post('/mobile-money/initiate', protect, initiateMobileMoney);
+
+// Mobile money - submit OTP
+router.post('/mobile-money/submit-otp', protect, submitOtp);
 
 // Mobile money - verify transaction status
 router.get('/mobile-money/verify/:reference', protect, verifyMobileMoney);

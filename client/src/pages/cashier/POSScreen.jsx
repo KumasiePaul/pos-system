@@ -7,7 +7,7 @@ import useCart from '../../hooks/useCart';
 import Cart from '../../components/sales/Cart';
 import { getAllProducts, searchProducts } from '../../services/productService';
 import { createSale } from '../../services/salesService';
-import { initiateMobileMoney, verifyMobileMoneyPayment } from '../../services/paymentService';
+import { initiateMobileMoney, submitMobileMoneyOtp, verifyMobileMoneyPayment } from '../../services/paymentService';
 
 const POSScreen = () => {
   const { token, user, logout } = useAuth();
@@ -27,6 +27,10 @@ const POSScreen = () => {
   const [mobilePhone, setMobilePhone] = useState('');
   const [mobileNetwork, setMobileNetwork] = useState('mtn');
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [momoReference, setMomoReference] = useState('');
+  const [submittingOtp, setSubmittingOtp] = useState(false);
   const pollRef = useRef(null);
 
   useEffect(() => { fetchProducts(); }, []);
@@ -70,6 +74,9 @@ const POSScreen = () => {
     setMobilePhone('');
     setMobileNetwork('mtn');
     setAwaitingConfirmation(false);
+    setAwaitingOtp(false);
+    setOtp('');
+    setMomoReference('');
     setShowPaymentModal(true);
   };
 
@@ -93,38 +100,52 @@ const POSScreen = () => {
     }
   };
 
+  const startPolling = (reference) => {
+    pollRef.current = setInterval(async () => {
+      try {
+        const { status } = await verifyMobileMoneyPayment(reference, token);
+        if (status === 'success') {
+          clearInterval(pollRef.current);
+          const saleData = {
+            items: cartItems.map(item => ({ productId: item._id, quantity: item.quantity })),
+            discount, tax, paymentMethod: 'mobile_money', amountPaid: grandTotal,
+          };
+          const result = await createSale(saleData, token);
+          clearCart();
+          setShowPaymentModal(false);
+          navigate('/cashier/receipt', { state: { sale: result.sale } });
+        } else if (status === 'failed' || status === 'abandoned' || status === 'reversed') {
+          clearInterval(pollRef.current);
+          setAwaitingConfirmation(false);
+          setAwaitingOtp(false);
+          setError(
+            status === 'abandoned'
+              ? 'Customer did not complete the payment. Please try again.'
+              : 'Payment was declined. Please try again.'
+          );
+          setTimeout(() => setError(''), 5000);
+        }
+      } catch {
+        // keep polling on transient network errors
+      }
+    }, 3000);
+  };
+
   const handleMobileMoneySubmit = async (e) => {
     e.preventDefault();
     setProcessing(true);
     try {
-      const { reference } = await initiateMobileMoney(
+      const { reference, status } = await initiateMobileMoney(
         { phone: mobilePhone, network: mobileNetwork, amount: grandTotal },
         token
       );
-      setAwaitingConfirmation(true);
-      pollRef.current = setInterval(async () => {
-        try {
-          const { status } = await verifyMobileMoneyPayment(reference, token);
-          if (status === 'success') {
-            clearInterval(pollRef.current);
-            const saleData = {
-              items: cartItems.map(item => ({ productId: item._id, quantity: item.quantity })),
-              discount, tax, paymentMethod: 'mobile_money', amountPaid: grandTotal,
-            };
-            const result = await createSale(saleData, token);
-            clearCart();
-            setShowPaymentModal(false);
-            navigate('/cashier/receipt', { state: { sale: result.sale } });
-          } else if (status === 'failed') {
-            clearInterval(pollRef.current);
-            setAwaitingConfirmation(false);
-            setError('Payment was declined. Please try again.');
-            setTimeout(() => setError(''), 4000);
-          }
-        } catch {
-          // keep polling on transient network errors
-        }
-      }, 3000);
+      setMomoReference(reference);
+      if (status === 'send_otp') {
+        setAwaitingOtp(true);
+      } else {
+        setAwaitingConfirmation(true);
+        startPolling(reference);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send payment request. Try again.');
       setTimeout(() => setError(''), 4000);
@@ -133,14 +154,49 @@ const POSScreen = () => {
     }
   };
 
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    setSubmittingOtp(true);
+    try {
+      const { status } = await submitMobileMoneyOtp({ otp, reference: momoReference }, token);
+      if (status === 'success') {
+        // already done, create sale
+        const saleData = {
+          items: cartItems.map(item => ({ productId: item._id, quantity: item.quantity })),
+          discount, tax, paymentMethod: 'mobile_money', amountPaid: grandTotal,
+        };
+        const result = await createSale(saleData, token);
+        clearCart();
+        setShowPaymentModal(false);
+        navigate('/cashier/receipt', { state: { sale: result.sale } });
+      } else {
+        // OTP accepted, now wait for final confirmation
+        setAwaitingOtp(false);
+        setAwaitingConfirmation(true);
+        startPolling(momoReference);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+      setTimeout(() => setError(''), 4000);
+    } finally {
+      setSubmittingOtp(false);
+    }
+  };
+
   const handleCancelMobilePayment = () => {
     if (pollRef.current) clearInterval(pollRef.current);
     setAwaitingConfirmation(false);
+    setAwaitingOtp(false);
+    setOtp('');
+    setMomoReference('');
   };
 
   const handleClosePaymentModal = () => {
     if (pollRef.current) clearInterval(pollRef.current);
     setAwaitingConfirmation(false);
+    setAwaitingOtp(false);
+    setOtp('');
+    setMomoReference('');
     setShowPaymentModal(false);
   };
 
@@ -301,7 +357,59 @@ const POSScreen = () => {
               </p>
             </div>
 
-            {awaitingConfirmation ? (
+            {/* Error inside modal */}
+            {error && (
+              <div className="mb-4 bg-red-100 border border-red-300 text-red-700 text-sm rounded-xl px-4 py-3 flex items-start gap-2">
+                <span className="mt-0.5">⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {awaitingOtp ? (
+              /* ── OTP entry screen ── */
+              <form onSubmit={handleOtpSubmit} className="space-y-4">
+                <div className="text-center py-2">
+                  <div className="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Smartphone size={22} className="text-blue-600" />
+                  </div>
+                  <p className={`font-semibold text-base ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                    Enter OTP
+                  </p>
+                  <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    A code was sent to <span className="font-medium text-blue-500">{mobilePhone}</span>. Enter it below to confirm payment.
+                  </p>
+                </div>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                  placeholder="Enter OTP code"
+                  className={`w-full border rounded-lg px-3 py-2.5 text-sm text-center tracking-widest font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                    isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-gray-300 text-gray-800'
+                  }`}
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={submittingOtp}
+                    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm transition duration-200 disabled:opacity-50"
+                  >
+                    {submittingOtp ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                    {submittingOtp ? 'Verifying...' : 'Confirm Payment'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelMobilePayment}
+                    className={`flex-1 py-3 rounded-xl font-medium text-sm transition duration-200 ${
+                      isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : awaitingConfirmation ? (
               /* ── Waiting for customer to approve on their phone ── */
               <div className="space-y-5 text-center">
                 <div className="flex flex-col items-center gap-3 py-4">

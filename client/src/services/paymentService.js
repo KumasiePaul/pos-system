@@ -30,6 +30,12 @@ export const getPaymentSummary = async (token) => {
   return response.data;
 };
 
+// Submit OTP to complete a mobile money charge
+export const submitMobileMoneyOtp = async (data, token) => {
+  const response = await axios.post(`${API_URL}/mobile-money/submit-otp`, data, getAuthHeader(token));
+  return response.data;
+};
+
 // Initiate a Paystack mobile money charge
 export const initiateMobileMoney = async (data, token) => {
   const response = await axios.post(`${API_URL}/mobile-money/initiate`, data, getAuthHeader(token));

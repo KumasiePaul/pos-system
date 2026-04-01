@@ -23,28 +23,60 @@ export const initiateMobileMoney = async (req, res) => {
 
     const amountInPesewas = Math.round(Number(amount) * 100);
 
+    // Convert local format (0XXXXXXXXX) to international format (233XXXXXXXXX)
+    const internationalPhone = phone.startsWith('0')
+      ? `233${phone.slice(1)}`
+      : phone;
+
     const response = await fetch(`${PAYSTACK_BASE}/charge`, {
       method: 'POST',
       headers: paystackHeaders(),
       body: JSON.stringify({
-        email: `${phone}@momo.salesync.pos`,
+        email: `${internationalPhone}@momo.salesync.com`,
         amount: amountInPesewas,
-        mobile_money: { phone, provider: network },
+        mobile_money: { phone: internationalPhone, provider: network },
       }),
     });
 
     const data = await response.json();
 
-    if (!data.status) {
-      return res.status(400).json({ message: data.message || 'Paystack charge failed' });
+    // "Charge attempted" = USSD prompt sent, charge is in progress — not an error
+    if (data.data?.reference) {
+      return res.status(200).json({
+        reference: data.data.reference,
+        status: data.data.status || 'pay_offline',
+      });
     }
 
-    res.status(200).json({
-      reference: data.data.reference,
-      status: data.data.status,
-    });
+    return res.status(400).json({ message: data.message || 'Paystack charge failed' });
   } catch (error) {
     res.status(500).json({ message: 'Payment initiation failed', error: error.message });
+  }
+};
+
+// Submit OTP to Paystack to complete the charge
+export const submitOtp = async (req, res) => {
+  try {
+    const { otp, reference } = req.body;
+    if (!otp || !reference) {
+      return res.status(400).json({ message: 'otp and reference are required' });
+    }
+
+    const response = await fetch(`${PAYSTACK_BASE}/charge/submit_otp`, {
+      method: 'POST',
+      headers: paystackHeaders(),
+      body: JSON.stringify({ otp, reference }),
+    });
+
+    const data = await response.json();
+
+    if (data.data?.reference) {
+      return res.status(200).json({ status: data.data.status });
+    }
+
+    return res.status(400).json({ message: data.message || 'OTP submission failed' });
+  } catch (error) {
+    res.status(500).json({ message: 'OTP submission failed', error: error.message });
   }
 };
 
@@ -59,8 +91,9 @@ export const verifyMobileMoney = async (req, res) => {
 
     const data = await response.json();
 
-    if (!data.status) {
-      return res.status(400).json({ message: data.message || 'Verification failed' });
+    // If transaction is still pending (not yet approved by customer)
+    if (!data.status || !data.data) {
+      return res.status(200).json({ status: 'pending' });
     }
 
     res.status(200).json({ status: data.data.status });
