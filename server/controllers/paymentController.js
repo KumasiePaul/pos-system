@@ -1,6 +1,74 @@
 import Payment from '../models/Payment.js';
 import Sale from '../models/Sale.js';
 
+const PAYSTACK_BASE = 'https://api.paystack.co';
+const paystackHeaders = () => ({
+  Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+  'Content-Type': 'application/json',
+});
+
+// Initiate a Paystack mobile money charge
+export const initiateMobileMoney = async (req, res) => {
+  try {
+    const { phone, network, amount } = req.body;
+
+    if (!phone || !network || !amount) {
+      return res.status(400).json({ message: 'phone, network and amount are required' });
+    }
+
+    const providerMap = { mtn: 'mtn', vod: 'vod', tgo: 'tgo' };
+    if (!providerMap[network]) {
+      return res.status(400).json({ message: 'Invalid network. Use mtn, vod, or tgo' });
+    }
+
+    const amountInPesewas = Math.round(Number(amount) * 100);
+
+    const response = await fetch(`${PAYSTACK_BASE}/charge`, {
+      method: 'POST',
+      headers: paystackHeaders(),
+      body: JSON.stringify({
+        email: `${phone}@momo.salesync.pos`,
+        amount: amountInPesewas,
+        mobile_money: { phone, provider: network },
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!data.status) {
+      return res.status(400).json({ message: data.message || 'Paystack charge failed' });
+    }
+
+    res.status(200).json({
+      reference: data.data.reference,
+      status: data.data.status,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Payment initiation failed', error: error.message });
+  }
+};
+
+// Verify a Paystack transaction by reference
+export const verifyMobileMoney = async (req, res) => {
+  try {
+    const { reference } = req.params;
+
+    const response = await fetch(`${PAYSTACK_BASE}/transaction/verify/${reference}`, {
+      headers: paystackHeaders(),
+    });
+
+    const data = await response.json();
+
+    if (!data.status) {
+      return res.status(400).json({ message: data.message || 'Verification failed' });
+    }
+
+    res.status(200).json({ status: data.data.status });
+  } catch (error) {
+    res.status(500).json({ message: 'Verification failed', error: error.message });
+  }
+};
+
 // Create a payment record
 export const createPayment = async (req, res) => {
   try {

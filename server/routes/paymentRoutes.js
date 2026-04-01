@@ -3,7 +3,9 @@ import {
   createPayment,
   getAllPayments,
   getPaymentBySale,
-  getPaymentSummary
+  getPaymentSummary,
+  initiateMobileMoney,
+  verifyMobileMoney
 } from '../controllers/paymentController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
@@ -20,5 +22,11 @@ router.get('/summary', protect, authorizeRoles('admin', 'manager'), getPaymentSu
 
 // Get payment by sale ID
 router.get('/sale/:saleId', protect, getPaymentBySale);
+
+// Mobile money - initiate Paystack charge
+router.post('/mobile-money/initiate', protect, initiateMobileMoney);
+
+// Mobile money - verify transaction status
+router.get('/mobile-money/verify/:reference', protect, verifyMobileMoney);
 
 export default router;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ShoppingCart, X, CreditCard, Smartphone, Banknote, LogOut, AlertTriangle } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
@@ -7,6 +7,7 @@ import useCart from '../../hooks/useCart';
 import Cart from '../../components/sales/Cart';
 import { getAllProducts, searchProducts } from '../../services/productService';
 import { createSale } from '../../services/salesService';
+import { initiateMobileMoney, verifyMobileMoneyPayment } from '../../services/paymentService';
 
 const POSScreen = () => {
   const { token, user, logout } = useAuth();
@@ -23,8 +24,13 @@ const POSScreen = () => {
   const [amountPaid, setAmountPaid] = useState('');
   const [processing, setProcessing] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [mobilePhone, setMobilePhone] = useState('');
+  const [mobileNetwork, setMobileNetwork] = useState('mtn');
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const pollRef = useRef(null);
 
   useEffect(() => { fetchProducts(); }, []);
+  useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
 
   const fetchProducts = async () => {
     try {
@@ -61,6 +67,9 @@ const POSScreen = () => {
     }
     setAmountPaid('');
     setPaymentMethod('cash');
+    setMobilePhone('');
+    setMobileNetwork('mtn');
+    setAwaitingConfirmation(false);
     setShowPaymentModal(true);
   };
 
@@ -84,6 +93,57 @@ const POSScreen = () => {
     }
   };
 
+  const handleMobileMoneySubmit = async (e) => {
+    e.preventDefault();
+    setProcessing(true);
+    try {
+      const { reference } = await initiateMobileMoney(
+        { phone: mobilePhone, network: mobileNetwork, amount: grandTotal },
+        token
+      );
+      setAwaitingConfirmation(true);
+      pollRef.current = setInterval(async () => {
+        try {
+          const { status } = await verifyMobileMoneyPayment(reference, token);
+          if (status === 'success') {
+            clearInterval(pollRef.current);
+            const saleData = {
+              items: cartItems.map(item => ({ productId: item._id, quantity: item.quantity })),
+              discount, tax, paymentMethod: 'mobile_money', amountPaid: grandTotal,
+            };
+            const result = await createSale(saleData, token);
+            clearCart();
+            setShowPaymentModal(false);
+            navigate('/cashier/receipt', { state: { sale: result.sale } });
+          } else if (status === 'failed') {
+            clearInterval(pollRef.current);
+            setAwaitingConfirmation(false);
+            setError('Payment was declined. Please try again.');
+            setTimeout(() => setError(''), 4000);
+          }
+        } catch {
+          // keep polling on transient network errors
+        }
+      }, 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send payment request. Try again.');
+      setTimeout(() => setError(''), 4000);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleCancelMobilePayment = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setAwaitingConfirmation(false);
+  };
+
+  const handleClosePaymentModal = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setAwaitingConfirmation(false);
+    setShowPaymentModal(false);
+  };
+
   const handleLogoutConfirm = () => {
     logout();
     navigate('/login');
@@ -95,7 +155,6 @@ const POSScreen = () => {
   const paymentMethods = [
     { id: 'cash', label: 'Cash', icon: Banknote },
     { id: 'mobile_money', label: 'Mobile Money', icon: Smartphone },
-    { id: 'card', label: 'Card', icon: CreditCard },
   ];
 
   return (
@@ -228,7 +287,7 @@ const POSScreen = () => {
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart</p>
                 </div>
               </div>
-              <button onClick={() => setShowPaymentModal(false)}
+              <button onClick={handleClosePaymentModal}
                 className={`p-1 rounded-lg transition ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-500'}`}>
                 <X size={18} />
               </button>
@@ -242,94 +301,182 @@ const POSScreen = () => {
               </p>
             </div>
 
-            <form onSubmit={handlePaymentSubmit} className="space-y-4">
-
-              {/* Payment Method */}
-              <div>
-                <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Payment Method
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {paymentMethods.map(method => {
-                    const Icon = method.icon;
-                    return (
-                      <button
-                        key={method.id}
-                        type="button"
-                        onClick={() => setPaymentMethod(method.id)}
-                        className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition duration-200 ${
-                          paymentMethod === method.id
-                            ? 'border-blue-600 bg-blue-600 text-white'
-                            : `${isDark ? 'border-slate-600 text-slate-300 hover:border-blue-500' : 'border-gray-200 text-gray-600 hover:border-blue-400'}`
-                        }`}
-                      >
-                        <Icon size={20} />
-                        {method.label}
-                      </button>
-                    );
-                  })}
+            {awaitingConfirmation ? (
+              /* ── Waiting for customer to approve on their phone ── */
+              <div className="space-y-5 text-center">
+                <div className="flex flex-col items-center gap-3 py-4">
+                  <div className="relative w-16 h-16">
+                    <div className={`absolute inset-0 rounded-full border-4 ${isDark ? 'border-slate-600' : 'border-blue-100'}`}></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+                    <Smartphone size={24} className="absolute inset-0 m-auto text-blue-500" />
+                  </div>
+                  <div>
+                    <p className={`font-semibold text-base ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                      Waiting for customer...
+                    </p>
+                    <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                      Prompt sent to <span className="font-medium text-blue-500">{mobilePhone}</span>
+                    </p>
+                  </div>
+                  <p className={`text-xs px-2 leading-relaxed ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Ask the customer to check their phone and approve the payment of{' '}
+                    <span className="font-semibold text-blue-500">GH₵ {grandTotal.toFixed(2)}</span>
+                  </p>
                 </div>
-              </div>
-
-              {/* Amount Paid */}
-              <div>
-                <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Amount Paid (GH₵)
-                </label>
-                <input
-                  type="number"
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
-                  required
-                  min={grandTotal}
-                  step="0.01"
-                  placeholder="0.00"
-                  className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
-                    isDark
-                      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-                      : 'bg-white border-gray-300 text-gray-800'
-                  }`}
-                />
-              </div>
-
-              {/* Change */}
-              {amountPaid && Number(amountPaid) >= grandTotal && (
-                <div className={`rounded-xl p-3 flex justify-between items-center ${
-                  isDark ? 'bg-green-500 bg-opacity-10 border border-green-500 border-opacity-30' : 'bg-green-50 border border-green-200'
-                }`}>
-                  <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>Change</span>
-                  <span className="text-lg font-bold text-green-500">
-                    GH₵ {change.toFixed(2)}
-                  </span>
-                </div>
-              )}
-
-              {/* Buttons */}
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={processing}
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm transition duration-200 disabled:opacity-50"
-                >
-                  {processing ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <CreditCard size={16} />
-                  )}
-                  {processing ? 'Processing...' : 'Complete Sale'}
-                </button>
                 <button
                   type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className={`flex-1 py-3 rounded-xl font-medium text-sm transition duration-200 ${
+                  onClick={handleCancelMobilePayment}
+                  className={`w-full py-3 rounded-xl font-medium text-sm transition duration-200 ${
                     isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
-                  Cancel
+                  Cancel Payment
                 </button>
               </div>
+            ) : (
+              <form
+                onSubmit={paymentMethod === 'mobile_money' ? handleMobileMoneySubmit : handlePaymentSubmit}
+                className="space-y-4"
+              >
+                {/* Payment Method selector */}
+                <div>
+                  <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Payment Method
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {paymentMethods.map(method => {
+                      const Icon = method.icon;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.id)}
+                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-medium transition duration-200 ${
+                            paymentMethod === method.id
+                              ? 'border-blue-600 bg-blue-600 text-white'
+                              : `${isDark ? 'border-slate-600 text-slate-300 hover:border-blue-500' : 'border-gray-200 text-gray-600 hover:border-blue-400'}`
+                          }`}
+                        >
+                          <Icon size={20} />
+                          {method.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            </form>
+                {paymentMethod === 'mobile_money' ? (
+                  /* ── Mobile Money fields ── */
+                  <div className="space-y-3">
+                    <div>
+                      <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Mobile Network
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'mtn', label: 'MTN' },
+                          { id: 'vod', label: 'Vodafone' },
+                          { id: 'tgo', label: 'AirtelTigo' },
+                        ].map(net => (
+                          <button
+                            key={net.id}
+                            type="button"
+                            onClick={() => setMobileNetwork(net.id)}
+                            className={`py-2 rounded-xl border-2 text-xs font-medium transition duration-200 ${
+                              mobileNetwork === net.id
+                                ? 'border-blue-600 bg-blue-600 text-white'
+                                : `${isDark ? 'border-slate-600 text-slate-300 hover:border-blue-500' : 'border-gray-200 text-gray-600 hover:border-blue-400'}`
+                            }`}
+                          >
+                            {net.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Customer Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={mobilePhone}
+                        onChange={(e) => setMobilePhone(e.target.value)}
+                        required
+                        placeholder="e.g. 0241234567"
+                        pattern="[0-9]{10}"
+                        className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                          isDark
+                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                            : 'bg-white border-gray-300 text-gray-800'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Cash / Card fields ── */
+                  <>
+                    <div>
+                      <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Amount Paid (GH₵)
+                      </label>
+                      <input
+                        type="number"
+                        value={amountPaid}
+                        onChange={(e) => setAmountPaid(e.target.value)}
+                        required
+                        min={grandTotal}
+                        step="0.01"
+                        placeholder="0.00"
+                        className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
+                          isDark
+                            ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
+                            : 'bg-white border-gray-300 text-gray-800'
+                        }`}
+                      />
+                    </div>
+                    {amountPaid && Number(amountPaid) >= grandTotal && (
+                      <div className={`rounded-xl p-3 flex justify-between items-center ${
+                        isDark ? 'bg-green-500 bg-opacity-10 border border-green-500 border-opacity-30' : 'bg-green-50 border border-green-200'
+                      }`}>
+                        <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>Change</span>
+                        <span className="text-lg font-bold text-green-500">GH₵ {change.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={processing}
+                    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm transition duration-200 disabled:opacity-50"
+                  >
+                    {processing ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : paymentMethod === 'mobile_money' ? (
+                      <Smartphone size={16} />
+                    ) : (
+                      <CreditCard size={16} />
+                    )}
+                    {processing
+                      ? 'Processing...'
+                      : paymentMethod === 'mobile_money'
+                      ? 'Send to Customer'
+                      : 'Complete Sale'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClosePaymentModal}
+                    className={`flex-1 py-3 rounded-xl font-medium text-sm transition duration-200 ${
+                      isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

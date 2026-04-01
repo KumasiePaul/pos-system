@@ -18,7 +18,6 @@ const ReceiptScreen = () => {
 
   const getPaymentLabel = (method) => {
     if (method === 'mobile_money') return 'Mobile Money';
-    if (method === 'card') return 'Card Payment';
     return 'Cash';
   };
 

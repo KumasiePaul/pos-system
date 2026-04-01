@@ -11,12 +11,6 @@ const PaymentMethodSelector = ({ selected, onChange }) => {
       label: 'Mobile Money',
       emoji: '📱',
       description: 'MTN, Vodafone, AirtelTigo'
-    },
-    {
-      id: 'card',
-      label: 'Card',
-      emoji: '💳',
-      description: 'Debit or credit card'
     }
   ];
 
