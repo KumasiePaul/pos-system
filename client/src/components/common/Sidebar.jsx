@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Warehouse, Users, BarChart3,
-  UserCog, DatabaseBackup, ShoppingCart
+  UserCog, DatabaseBackup, ShoppingCart, ClipboardList
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
@@ -16,6 +16,7 @@ const Sidebar = ({ isOpen }) => {
     { path: '/admin/inventory', label: 'Inventory', icon: Warehouse },
     { path: '/admin/customers', label: 'Customers', icon: Users },
     { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
+    { path: '/admin/end-of-day', label: 'End of Day', icon: ClipboardList },
     { path: '/admin/users', label: 'User Management', icon: UserCog },
     { path: '/admin/backup', label: 'Backup & Recovery', icon: DatabaseBackup },
   ];
@@ -26,6 +27,7 @@ const Sidebar = ({ isOpen }) => {
     { path: '/manager/inventory', label: 'Inventory', icon: Warehouse },
     { path: '/manager/customers', label: 'Customers', icon: Users },
     { path: '/manager/reports', label: 'Reports', icon: BarChart3 },
+    { path: '/admin/end-of-day', label: 'End of Day', icon: ClipboardList },
   ];
 
   const cashierLinks = [

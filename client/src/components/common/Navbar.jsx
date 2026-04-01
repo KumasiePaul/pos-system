@@ -263,8 +263,8 @@ const Navbar = ({ onMenuClick }) => {
 
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3">
-                <div className="bg-red-500 bg-opacity-20 rounded-full p-2">
-                  <AlertTriangle size={20} className="text-red-500" />
+                <div className="bg-red-500 rounded-full p-2">
+                  <AlertTriangle size={20} className="text-white" />
                 </div>
                 <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
                   Confirm Logout

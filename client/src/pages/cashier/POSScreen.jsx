@@ -5,7 +5,7 @@ import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
 import useCart from '../../hooks/useCart';
 import Cart from '../../components/sales/Cart';
-import { getAllProducts, searchProducts } from '../../services/productService';
+import { getAllProducts, searchProducts, getProductByBarcode } from '../../services/productService';
 import { createSale } from '../../services/salesService';
 import { initiateMobileMoney, submitMobileMoneyOtp, verifyMobileMoneyPayment } from '../../services/paymentService';
 
@@ -27,6 +27,9 @@ const POSScreen = () => {
   const [mobilePhone, setMobilePhone] = useState('');
   const [mobileNetwork, setMobileNetwork] = useState('mtn');
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [scanFeedback, setScanFeedback] = useState(null); // { type: 'success'|'error', message }
+  const barcodeBuffer = useRef('');
+  const barcodeTimer = useRef(null);
   const [awaitingOtp, setAwaitingOtp] = useState(false);
   const [otp, setOtp] = useState('');
   const [momoReference, setMomoReference] = useState('');
@@ -35,6 +38,31 @@ const POSScreen = () => {
 
   useEffect(() => { fetchProducts(); }, []);
   useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
+  // Barcode scanner listener — scanners fire keystrokes very fast then send Enter
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input/textarea
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'Enter') {
+        const barcode = barcodeBuffer.current.trim();
+        barcodeBuffer.current = '';
+        if (barcodeTimer.current) clearTimeout(barcodeTimer.current);
+        if (barcode.length >= 3) handleBarcodeScan(barcode);
+      } else if (e.key.length === 1) {
+        barcodeBuffer.current += e.key;
+        // Clear buffer if no new character arrives within 100ms (human typing is slower)
+        if (barcodeTimer.current) clearTimeout(barcodeTimer.current);
+        barcodeTimer.current = setTimeout(() => {
+          barcodeBuffer.current = '';
+        }, 100);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [token, cartItems]);
 
   const fetchProducts = async () => {
     try {
@@ -46,6 +74,21 @@ const POSScreen = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBarcodeScan = async (barcode) => {
+    try {
+      const product = await getProductByBarcode(barcode, token);
+      if (product.quantity === 0) {
+        setScanFeedback({ type: 'error', message: `"${product.name}" is out of stock` });
+      } else {
+        addToCart(product);
+        setScanFeedback({ type: 'success', message: `"${product.name}" added to cart` });
+      }
+    } catch {
+      setScanFeedback({ type: 'error', message: `No product found for barcode: ${barcode}` });
+    }
+    setTimeout(() => setScanFeedback(null), 3000);
   };
 
   const handleSearch = async (e) => {
@@ -246,6 +289,17 @@ const POSScreen = () => {
       {error && (
         <div className="bg-red-100 border-b border-red-400 text-red-700 px-6 py-2 text-sm font-medium">
           ⚠️ {error}
+        </div>
+      )}
+
+      {/* Barcode Scan Feedback */}
+      {scanFeedback && (
+        <div className={`px-6 py-2 text-sm font-medium border-b flex items-center gap-2 ${
+          scanFeedback.type === 'success'
+            ? 'bg-green-100 border-green-400 text-green-700'
+            : 'bg-red-100 border-red-400 text-red-700'
+        }`}>
+          {scanFeedback.type === 'success' ? '✅' : '❌'} {scanFeedback.message}
         </div>
       )}
 
@@ -595,8 +649,8 @@ const POSScreen = () => {
           <div className={`rounded-2xl shadow-2xl p-6 w-full max-w-sm ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3">
-                <div className="bg-red-500 bg-opacity-20 rounded-full p-2">
-                  <AlertTriangle size={20} className="text-red-500" />
+                <div className="bg-red-500 rounded-full p-2">
+                  <AlertTriangle size={20} className="text-white" />
                 </div>
                 <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
                   Confirm Logout

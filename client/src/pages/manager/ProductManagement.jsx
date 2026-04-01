@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, X, Pencil } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Search, X, Pencil, Upload, FileSpreadsheet, AlertTriangle, CheckCircle } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
 import {
-  getAllProducts, createProduct, updateProduct, searchProducts
+  getAllProducts, createProduct, updateProduct, searchProducts, bulkImportProducts
 } from '../../services/productService';
 import ProductTable from '../../components/products/ProductTable';
 import ProductForm from '../../components/products/ProductForm';
@@ -20,6 +20,10 @@ const ProductManagement = () => {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const fileInputRef = useRef(null);
 
   const input = `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 ${
     isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-gray-300 text-gray-800 placeholder-gray-400'
@@ -84,18 +88,56 @@ const ProductManagement = () => {
     }
   };
 
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImportLoading(true);
+    try {
+      const result = await bulkImportProducts(file, token);
+      setImportResult(result);
+      fetchProducts();
+    } catch (err) {
+      setImportResult({ error: err.response?.data?.message || 'Import failed' });
+    } finally {
+      setImportLoading(false);
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="p-6">
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-blue-800'}`}>Product Management</h1>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200 shadow"
-        >
-          <Plus size={16} /> Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <button
+            onClick={() => fileInputRef.current.click()}
+            disabled={importLoading}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition duration-200 shadow disabled:opacity-50 ${
+              isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            {importLoading
+              ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              : <Upload size={16} />
+            }
+            {importLoading ? 'Importing...' : 'Import from File'}
+          </button>
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200 shadow"
+          >
+            <Plus size={16} /> Add Product
+          </button>
+        </div>
       </div>
 
       {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">✅ {success}</div>}
@@ -149,6 +191,78 @@ const ProductManagement = () => {
               onCancel={() => { setShowFormModal(false); setEditingProduct(null); }}
               loading={formLoading}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Import Result Modal */}
+      {importResult && (
+        <div className={modalBg}>
+          <div className={`w-full max-w-md rounded-2xl shadow-2xl p-6 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white'}`}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${importResult.error ? 'bg-red-100' : 'bg-green-100'}`}>
+                  {importResult.error
+                    ? <AlertTriangle size={18} className="text-red-500" />
+                    : <FileSpreadsheet size={18} className="text-green-600" />
+                  }
+                </div>
+                <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  {importResult.error ? 'Import Failed' : 'Import Complete'}
+                </h2>
+              </div>
+              <button onClick={() => setImportResult(null)}
+                className={`p-1 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {importResult.error ? (
+              <p className="text-sm text-red-500">{importResult.error}</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`rounded-xl p-4 text-center ${isDark ? 'bg-slate-700' : 'bg-green-50'}`}>
+                    <p className="text-2xl font-bold text-green-500">{importResult.imported}</p>
+                    <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Products Imported</p>
+                  </div>
+                  <div className={`rounded-xl p-4 text-center ${isDark ? 'bg-slate-700' : 'bg-yellow-50'}`}>
+                    <p className="text-2xl font-bold text-yellow-500">{importResult.skipped}</p>
+                    <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Rows Skipped</p>
+                  </div>
+                </div>
+
+                {importResult.skippedDetails?.length > 0 && (
+                  <div>
+                    <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Skipped rows:</p>
+                    <div className={`rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto ${isDark ? 'bg-slate-700' : 'bg-gray-50'}`}>
+                      {importResult.skippedDetails.map((s, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <AlertTriangle size={12} className="text-yellow-500 mt-0.5 flex-shrink-0" />
+                          <p className={`text-xs ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+                            <span className="font-medium">{s.row}</span> — {s.reason}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {importResult.imported > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-green-500">
+                    <CheckCircle size={16} />
+                    <span>{importResult.imported} product{importResult.imported !== 1 ? 's' : ''} added to your inventory</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setImportResult(null)}
+              className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

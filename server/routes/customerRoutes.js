@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getAllCustomers,
   getCustomerById,
+  getCustomerPurchaseHistory,
   createCustomer,
   updateCustomer,
   deleteCustomer,
@@ -32,5 +33,8 @@ router.delete('/:id', protect, authorizeRoles('admin'), deleteCustomer);
 
 // Update loyalty points
 router.patch('/:id/loyalty', protect, authorizeRoles('admin', 'manager'), updateLoyaltyPoints);
+
+// Get customer purchase history
+router.get('/:id/history', protect, authorizeRoles('admin', 'manager'), getCustomerPurchaseHistory);
 
 export default router;

@@ -4,7 +4,8 @@ import {
   getWeeklySales,
   getProductPerformance,
   getCashierPerformance,
-  getSummary
+  getSummary,
+  getEndOfDayReport
 } from '../controllers/reportController.js';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 
@@ -16,5 +17,6 @@ router.get('/daily', protect, authorizeRoles('admin', 'manager'), getDailySales)
 router.get('/weekly', protect, authorizeRoles('admin', 'manager'), getWeeklySales);
 router.get('/products', protect, authorizeRoles('admin', 'manager'), getProductPerformance);
 router.get('/cashiers', protect, authorizeRoles('admin', 'manager'), getCashierPerformance);
+router.get('/end-of-day', protect, authorizeRoles('admin', 'manager'), getEndOfDayReport);
 
 export default router;

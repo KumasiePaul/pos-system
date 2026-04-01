@@ -12,6 +12,7 @@ import AdminProductManagement from '../pages/admin/ProductManagement';
 import AdminInventoryManagement from '../pages/admin/InventoryManagement';
 import AdminCustomerManagement from '../pages/admin/CustomerManagement';
 import AdminReports from '../pages/admin/Reports';
+import EndOfDayReport from '../pages/admin/EndOfDayReport';
 import UserManagement from '../pages/admin/UserManagement';
 import BackupRecovery from '../pages/admin/BackupRecovery';
 
@@ -87,6 +88,11 @@ const AppRoutes = () => {
         <Route path="/admin/backup" element={
           <ProtectedRoute allowedRoles={['admin']}>
             <BackupRecovery />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/end-of-day" element={
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
+            <EndOfDayReport />
           </ProtectedRoute>
         } />
 

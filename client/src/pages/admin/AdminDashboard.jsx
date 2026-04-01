@@ -5,9 +5,13 @@ import {
   UserCog, DatabaseBackup, TrendingUp,
   ShoppingCart, DollarSign, ArrowRight
 } from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, BarChart, Bar
+} from 'recharts';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
-import { getSummary, getDailySales } from '../../services/reportService';
+import { getSummary, getDailySales, getWeeklySales } from '../../services/reportService';
 
 const AdminDashboard = () => {
   const { user, token } = useAuth();
@@ -15,6 +19,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [dailySales, setDailySales] = useState(null);
+  const [weeklySales, setWeeklySales] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,12 +28,18 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [summaryData, dailyData] = await Promise.allSettled([
+      const [summaryData, dailyData, weeklyData] = await Promise.allSettled([
         getSummary(token),
-        getDailySales(token)
+        getDailySales(token),
+        getWeeklySales(token)
       ]);
       if (summaryData.status === 'fulfilled') setSummary(summaryData.value);
       if (dailyData.status === 'fulfilled') setDailySales(dailyData.value);
+      if (weeklyData.status === 'fulfilled') setWeeklySales(weeklyData.value.map(d => ({
+        day: new Date(d._id).toLocaleDateString('en-GH', { weekday: 'short', month: 'short', day: 'numeric' }),
+        revenue: Number(d.totalRevenue.toFixed(2)),
+        transactions: d.totalTransactions
+      })));
     } catch (err) {
       console.error('Failed to load dashboard data');
     } finally {
@@ -119,6 +130,55 @@ const AdminDashboard = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Sales Charts */}
+      {weeklySales.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {/* Revenue Chart */}
+          <div className={`${card} p-5`}>
+            <p className={`text-sm font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              Revenue — Last 7 Days
+            </p>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={weeklySales}>
+                <defs>
+                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e5e7eb'} />
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#6b7280' }} />
+                <YAxis tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#6b7280' }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', border: 'none', borderRadius: '8px', fontSize: '12px' }}
+                  formatter={(v) => [`GH₵ ${v}`, 'Revenue']}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#revenueGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Transactions Chart */}
+          <div className={`${card} p-5`}>
+            <p className={`text-sm font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              Transactions — Last 7 Days
+            </p>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={weeklySales}>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e5e7eb'} />
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#6b7280' }} />
+                <YAxis tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#6b7280' }} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: isDark ? '#1e293b' : '#fff', border: 'none', borderRadius: '8px', fontSize: '12px' }}
+                  formatter={(v) => [v, 'Transactions']}
+                />
+                <Bar dataKey="transactions" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 

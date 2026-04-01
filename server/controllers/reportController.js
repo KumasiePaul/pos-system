@@ -127,6 +127,53 @@ export const getCashierPerformance = async (req, res) => {
   }
 };
 
+// End of Day Report
+export const getEndOfDayReport = async (req, res) => {
+  try {
+    const dateStr = req.query.date; // optional: YYYY-MM-DD
+    const day = dateStr ? new Date(dateStr) : new Date();
+    day.setHours(0, 0, 0, 0);
+    const nextDay = new Date(day);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const sales = await Sale.find({
+      createdAt: { $gte: day, $lt: nextDay },
+      status: 'completed'
+    }).populate('cashier', 'name');
+
+    const totalRevenue = sales.reduce((s, sale) => s + sale.grandTotal, 0);
+    const totalTransactions = sales.length;
+    const totalItemsSold = sales.reduce((s, sale) =>
+      s + sale.items.reduce((a, item) => a + item.quantity, 0), 0
+    );
+    const totalCash = sales.filter(s => s.paymentMethod === 'cash').reduce((s, sale) => s + sale.grandTotal, 0);
+    const totalMobileMoney = sales.filter(s => s.paymentMethod === 'mobile_money').reduce((s, sale) => s + sale.grandTotal, 0);
+    const totalDiscount = sales.reduce((s, sale) => s + (sale.discount || 0), 0);
+
+    // Per cashier breakdown
+    const cashierMap = {};
+    sales.forEach(sale => {
+      const name = sale.cashier?.name || 'Unknown';
+      if (!cashierMap[name]) cashierMap[name] = { name, transactions: 0, revenue: 0 };
+      cashierMap[name].transactions += 1;
+      cashierMap[name].revenue += sale.grandTotal;
+    });
+
+    res.status(200).json({
+      date: day,
+      totalRevenue,
+      totalTransactions,
+      totalItemsSold,
+      totalCash,
+      totalMobileMoney,
+      totalDiscount,
+      cashierBreakdown: Object.values(cashierMap)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Get overall summary
 export const getSummary = async (req, res) => {
   try {

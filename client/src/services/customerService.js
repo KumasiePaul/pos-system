@@ -47,3 +47,9 @@ export const searchCustomers = async (query, token) => {
   const response = await axios.get(`${API_URL}/search?query=${query}`, getAuthHeader(token));
   return response.data;
 };
+
+// Get customer purchase history
+export const getCustomerPurchaseHistory = async (id, token) => {
+  const response = await axios.get(`${API_URL}/${id}/history`, getAuthHeader(token));
+  return response.data;
+};

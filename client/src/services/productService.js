@@ -42,3 +42,22 @@ export const searchProducts = async (query, token) => {
   const response = await axios.get(`${API_URL}/search?query=${query}`, getAuthHeader(token));
   return response.data;
 };
+
+// Get product by barcode
+export const getProductByBarcode = async (barcode, token) => {
+  const response = await axios.get(`${API_URL}/barcode/${barcode}`, getAuthHeader(token));
+  return response.data;
+};
+
+// Bulk import products from Excel/CSV file
+export const bulkImportProducts = async (file, token) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await axios.post(`${API_URL}/bulk-import`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};

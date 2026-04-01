@@ -35,3 +35,10 @@ export const getCashierPerformance = async (token) => {
   const response = await axios.get(`${API_URL}/cashiers`, getAuthHeader(token));
   return response.data;
 };
+
+// Get end of day report
+export const getEndOfDayReport = async (token, date) => {
+  const url = date ? `${API_URL}/end-of-day?date=${date}` : `${API_URL}/end-of-day`;
+  const response = await axios.get(url, getAuthHeader(token));
+  return response.data;
+};

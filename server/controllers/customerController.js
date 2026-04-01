@@ -1,4 +1,5 @@
 import Customer from '../models/Customer.js';
+import Sale from '../models/Sale.js';
 
 // Get all customers
 export const getAllCustomers = async (req, res) => {
@@ -102,6 +103,25 @@ export const updateLoyaltyPoints = async (req, res) => {
       message: 'Loyalty points updated successfully',
       customer
     });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get customer purchase history
+export const getCustomerPurchaseHistory = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.params.id);
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    const sales = await Sale.find({ customer: req.params.id, status: 'completed' })
+      .populate('cashier', 'name')
+      .sort({ createdAt: -1 });
+
+    const totalSpent = sales.reduce((s, sale) => s + sale.grandTotal, 0);
+
+    res.status(200).json({ customer, sales, totalSpent });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

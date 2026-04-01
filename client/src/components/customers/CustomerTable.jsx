@@ -1,7 +1,7 @@
-import { Pencil, Trash2, Star } from 'lucide-react';
+import { Pencil, Trash2, Star, History } from 'lucide-react';
 import useTheme from '../../hooks/useTheme';
 
-const CustomerTable = ({ customers, onEdit, onDelete, onUpdatePoints }) => {
+const CustomerTable = ({ customers, onEdit, onDelete, onUpdatePoints, onHistory }) => {
   const { isDark } = useTheme();
 
   const th = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider`;
@@ -69,6 +69,15 @@ const CustomerTable = ({ customers, onEdit, onDelete, onUpdatePoints }) => {
                     >
                       <Star size={12} />
                       Points
+                    </button>
+                  )}
+                  {onHistory && (
+                    <button
+                      onClick={() => onHistory(customer)}
+                      className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200"
+                    >
+                      <History size={12} />
+                      History
                     </button>
                   )}
                   {onDelete && (

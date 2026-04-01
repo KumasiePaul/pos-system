@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, X, Star, Pencil, Trash2, AlertTriangle, User } from 'lucide-react';
+import { Plus, Search, X, Star, Pencil, Trash2, AlertTriangle, User, History, ShoppingBag } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
 import {
   getAllCustomers, createCustomer, updateCustomer,
-  deleteCustomer, updateLoyaltyPoints, searchCustomers
+  deleteCustomer, updateLoyaltyPoints, searchCustomers,
+  getCustomerPurchaseHistory
 } from '../../services/customerService';
 import CustomerTable from '../../components/customers/CustomerTable';
 import CustomerForm from '../../components/customers/CustomerForm';
@@ -27,6 +28,12 @@ const CustomerManagement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingCustomer, setDeletingCustomer] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Purchase history modal
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyCustomer, setHistoryCustomer] = useState(null);
+  const [historyData, setHistoryData] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Loyalty points modal
   const [showPointsModal, setShowPointsModal] = useState(false);
@@ -120,6 +127,22 @@ const CustomerManagement = () => {
     }
   };
 
+  const openHistoryModal = async (customer) => {
+    setHistoryCustomer(customer);
+    setHistoryData(null);
+    setShowHistoryModal(true);
+    setHistoryLoading(true);
+    try {
+      const data = await getCustomerPurchaseHistory(customer._id, token);
+      setHistoryData(data);
+    } catch {
+      notify('error', 'Failed to load purchase history');
+      setShowHistoryModal(false);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   // ── Search ────────────────────────────────────────────────
   const handleSearch = async (e) => {
     const query = e.target.value;
@@ -189,6 +212,7 @@ const CustomerManagement = () => {
             onEdit={openEditModal}
             onDelete={openDeleteModal}
             onUpdatePoints={handleUpdatePoints}
+            onHistory={openHistoryModal}
           />
         )}
       </div>
@@ -350,6 +374,100 @@ const CustomerManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Purchase History Modal ───────────────────────────── */}
+      {showHistoryModal && historyCustomer && (
+        <div className={modalBg}>
+          <div className={`w-full max-w-2xl rounded-2xl shadow-2xl p-6 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white'}`}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 p-2 rounded-xl">
+                  <History size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                    Purchase History
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {historyCustomer.name} · {historyCustomer.phone}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowHistoryModal(false)}
+                className={`p-1 rounded-lg transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="text-center py-10">
+                <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Loading history...</p>
+              </div>
+            ) : historyData?.sales?.length === 0 ? (
+              <div className="text-center py-10">
+                <ShoppingBag size={36} className={`mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-gray-300'}`} />
+                <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>No purchases yet</p>
+              </div>
+            ) : historyData ? (
+              <>
+                {/* Summary */}
+                <div className={`grid grid-cols-3 gap-3 mb-5`}>
+                  {[
+                    { label: 'Total Purchases', value: historyData.sales.length },
+                    { label: 'Total Spent', value: `GH₵ ${Number(historyData.totalSpent).toFixed(2)}` },
+                    { label: 'Loyalty Points', value: `${historyCustomer.loyaltyPoints} pts` },
+                  ].map((s, i) => (
+                    <div key={i} className={`rounded-xl p-3 text-center ${isDark ? 'bg-slate-700' : 'bg-blue-50'}`}>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{s.label}</p>
+                      <p className={`text-base font-bold mt-0.5 ${isDark ? 'text-white' : 'text-blue-700'}`}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Transaction list */}
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                  {historyData.sales.map((sale) => (
+                    <div key={sale._id} className={`rounded-xl p-4 ${isDark ? 'bg-slate-700' : 'bg-gray-50'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <ShoppingBag size={14} className="text-blue-500" />
+                          <p className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+                            {new Date(sale.createdAt).toLocaleDateString('en-GH', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            {' · '}
+                            {new Date(sale.createdAt).toLocaleTimeString('en-GH', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <p className="text-sm font-bold text-blue-500">GH₵ {Number(sale.grandTotal).toFixed(2)}</p>
+                      </div>
+                      <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                        {sale.items.map(item => `${item.name} ×${item.quantity}`).join(', ')}
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className={`text-xs capitalize px-2 py-0.5 rounded-full ${
+                          sale.paymentMethod === 'mobile_money'
+                            ? 'bg-purple-100 text-purple-600'
+                            : 'bg-green-100 text-green-600'
+                        }`}>
+                          {sale.paymentMethod === 'mobile_money' ? 'Mobile Money' : 'Cash'}
+                        </span>
+                        <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                          by {sale.cashier?.name || 'Unknown'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            <button onClick={() => setShowHistoryModal(false)}
+              className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-medium transition">
+              Close
+            </button>
           </div>
         </div>
       )}
