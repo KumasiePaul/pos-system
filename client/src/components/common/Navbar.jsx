@@ -15,6 +15,7 @@ const Navbar = ({ onMenuClick }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
+  const seenNotifIds = useRef(new Set());
 
   // Fetch notifications (only for admin and manager)
   useEffect(() => {
@@ -72,7 +73,11 @@ const Navbar = ({ onMenuClick }) => {
         });
 
         setNotifications(built);
-        const unread = built.filter(n => n.type !== 'adjustment' || !n.isRead).length;
+        const dbTypes = ['adjustment', 'stock_update', 'user_created', 'user_role_changed', 'user_deleted', 'product_created', 'product_deleted', 'product_bulk_import'];
+        const unread = built.filter(n => {
+          if (dbTypes.includes(n.type)) return !n.isRead;
+          return !seenNotifIds.current.has(n.id);
+        }).length;
         setUnreadCount(unread);
       } catch {
         // silently fail
@@ -98,6 +103,8 @@ const Navbar = ({ onMenuClick }) => {
   const handleOpenNotifications = async () => {
     setShowNotifications((prev) => !prev);
     setUnreadCount(0);
+    // Mark all currently visible notifications as seen so the badge doesn't re-appear
+    notifications.forEach(n => seenNotifIds.current.add(n.id));
     const token = localStorage.getItem('token');
     const dbTypes = ['adjustment', 'stock_update', 'user_created', 'user_role_changed', 'user_deleted', 'product_created', 'product_deleted', 'product_bulk_import'];
     if (token && notifications.some(n => dbTypes.includes(n.type) && !n.isRead)) {
