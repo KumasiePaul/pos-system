@@ -1,5 +1,7 @@
 import Inventory from '../models/Inventory.js';
 import Product from '../models/Product.js';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 // Get all inventory
 export const getAllInventory = async (req, res) => {
@@ -88,7 +90,7 @@ export const adjustStock = async (req, res) => {
   try {
     const { adjustment, reason } = req.body;
 
-    const inventory = await Inventory.findById(req.params.id);
+    const inventory = await Inventory.findById(req.params.id).populate('product', 'name');
     if (!inventory) {
       return res.status(404).json({ message: 'Inventory record not found' });
     }
@@ -102,11 +104,33 @@ export const adjustStock = async (req, res) => {
     await inventory.save();
 
     // Also update quantity in Product model
-    await Product.findByIdAndUpdate(inventory.product, {
+    await Product.findByIdAndUpdate(inventory.product._id, {
       quantity: newQuantity
     });
 
-    
+    // Send notification to the opposite role
+    const adjusterRole = req.user.role;
+    const targetRole = adjusterRole === 'admin' ? 'manager' : 'admin';
+    const productName = inventory.product?.name || 'Unknown Product';
+    const direction = adjustment >= 0 ? `+${adjustment}` : `${adjustment}`;
+
+    const adjusterUser = await User.findById(req.user.id).select('name');
+    const adjusterName = adjusterUser?.name || 'Unknown';
+
+    await Notification.create({
+      targetRole,
+      type: 'stock_adjustment',
+      title: 'Stock Adjusted',
+      message: `${productName} stock was adjusted by ${direction} units. Reason: ${reason || 'No reason provided'}`,
+      adjustedBy: {
+        name: adjusterName,
+        role: adjusterRole
+      },
+      productName,
+      adjustment,
+      reason: reason || 'No reason provided'
+    });
+
     res.status(200).json({ message: 'Stock adjusted successfully', inventory });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

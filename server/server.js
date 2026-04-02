@@ -11,6 +11,7 @@ import customerRoutes from './routes/customerRoutes.js';
 import receiptRoutes from './routes/receiptRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Test route
 app.get('/', (req, res) => {

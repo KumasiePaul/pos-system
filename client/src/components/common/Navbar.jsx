@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Sun, Moon, LogOut, User, X, AlertTriangle, Bell, Package, AlertCircle, ShoppingCart } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, User, X, AlertTriangle, Bell, Package, AlertCircle, ShoppingCart, ClipboardList } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
 import { getLowStockItems } from '../../services/inventoryService';
+import { getNotifications, markAllNotificationsAsRead } from '../../services/notificationService';
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
@@ -15,7 +16,7 @@ const Navbar = ({ onMenuClick }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
 
-  // Fetch low stock notifications (only for admin and manager)
+  // Fetch notifications (only for admin and manager)
   useEffect(() => {
     if (!user || user.role === 'cashier') return;
 
@@ -24,9 +25,14 @@ const Navbar = ({ onMenuClick }) => {
 
     const fetchNotifications = async () => {
       try {
-        const lowStockItems = await getLowStockItems(token);
+        const [lowStockItems, adjustmentNotifs] = await Promise.all([
+          getLowStockItems(token),
+          getNotifications(token)
+        ]);
+
         const built = [];
 
+        // Low stock / out of stock alerts
         lowStockItems.forEach((item) => {
           const name = item.product?.name || 'Unknown Product';
           const qty = item.stockQuantity;
@@ -34,7 +40,7 @@ const Navbar = ({ onMenuClick }) => {
 
           if (qty === 0) {
             built.push({
-              id: item._id,
+              id: `ls-${item._id}`,
               type: 'critical',
               icon: 'alert',
               title: 'Out of Stock',
@@ -42,7 +48,7 @@ const Navbar = ({ onMenuClick }) => {
             });
           } else {
             built.push({
-              id: item._id,
+              id: `ls-${item._id}`,
               type: 'warning',
               icon: 'package',
               title: 'Low Stock',
@@ -51,8 +57,25 @@ const Navbar = ({ onMenuClick }) => {
           }
         });
 
+        // Stock adjustment notifications
+        adjustmentNotifs.forEach((notif) => {
+          const direction = notif.adjustment >= 0 ? `+${notif.adjustment}` : `${notif.adjustment}`;
+          built.push({
+            id: notif._id,
+            type: 'adjustment',
+            icon: 'clipboard',
+            title: 'Stock Adjusted',
+            message: `${notif.productName} adjusted by ${direction} units.`,
+            reason: notif.reason,
+            adjustedBy: notif.adjustedBy,
+            isRead: notif.isRead,
+            createdAt: notif.createdAt
+          });
+        });
+
         setNotifications(built);
-        setUnreadCount(built.length);
+        const unread = built.filter(n => n.type !== 'adjustment' || !n.isRead).length;
+        setUnreadCount(unread);
       } catch {
         // silently fail
       }
@@ -74,9 +97,19 @@ const Navbar = ({ onMenuClick }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleOpenNotifications = () => {
+  const handleOpenNotifications = async () => {
     setShowNotifications((prev) => !prev);
     setUnreadCount(0);
+    // Mark adjustment notifications as read
+    const token = localStorage.getItem('token');
+    if (token && notifications.some(n => n.type === 'adjustment' && !n.isRead)) {
+      try {
+        await markAllNotificationsAsRead(token);
+        setNotifications(prev => prev.map(n => n.type === 'adjustment' ? { ...n, isRead: true } : n));
+      } catch {
+        // silently fail
+      }
+    }
   };
 
   const handleLogoutConfirm = () => {
@@ -84,8 +117,9 @@ const Navbar = ({ onMenuClick }) => {
     navigate('/login');
   };
 
-  const criticalCount = notifications.filter((n) => n.type === 'critical').length;
-  const warningCount  = notifications.filter((n) => n.type === 'warning').length;
+  const criticalCount    = notifications.filter((n) => n.type === 'critical').length;
+  const warningCount     = notifications.filter((n) => n.type === 'warning').length;
+  const adjustmentCount  = notifications.filter((n) => n.type === 'adjustment').length;
 
   return (
     <>
@@ -157,7 +191,7 @@ const Navbar = ({ onMenuClick }) => {
 
                   {/* Summary row */}
                   {notifications.length > 0 && (
-                    <div className={`flex gap-2 px-4 py-2 border-b ${isDark ? 'border-slate-700 bg-slate-900' : 'border-gray-100 bg-gray-50'}`}>
+                    <div className={`flex flex-wrap gap-2 px-4 py-2 border-b ${isDark ? 'border-slate-700 bg-slate-900' : 'border-gray-100 bg-gray-50'}`}>
                       {criticalCount > 0 && (
                         <span className="flex items-center gap-1 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium">
                           <AlertCircle size={11} /> {criticalCount} Out of Stock
@@ -166,6 +200,11 @@ const Navbar = ({ onMenuClick }) => {
                       {warningCount > 0 && (
                         <span className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">
                           <Package size={11} /> {warningCount} Low Stock
+                        </span>
+                      )}
+                      {adjustmentCount > 0 && (
+                        <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                          <ClipboardList size={11} /> {adjustmentCount} Adjustment{adjustmentCount > 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
@@ -184,7 +223,11 @@ const Navbar = ({ onMenuClick }) => {
                       notifications.map((notif) => (
                         <div
                           key={notif.id}
-                          onClick={() => { navigate('/admin/inventory'); setShowNotifications(false); }}
+                          onClick={() => {
+                            const path = user?.role === 'manager' ? '/manager/inventory' : '/admin/inventory';
+                            navigate(path);
+                            setShowNotifications(false);
+                          }}
                           className={`flex items-start gap-3 px-4 py-3 cursor-pointer border-b last:border-0 transition ${
                             isDark
                               ? 'border-slate-700 hover:bg-slate-700'
@@ -194,22 +237,40 @@ const Navbar = ({ onMenuClick }) => {
                           <div className={`mt-0.5 p-1.5 rounded-lg flex-shrink-0 ${
                             notif.type === 'critical'
                               ? 'bg-red-100 text-red-500'
+                              : notif.type === 'adjustment'
+                              ? 'bg-blue-100 text-blue-600'
                               : 'bg-yellow-100 text-yellow-600'
                           }`}>
                             {notif.type === 'critical'
                               ? <AlertCircle size={14} />
+                              : notif.type === 'adjustment'
+                              ? <ClipboardList size={14} />
                               : <Package size={14} />
                             }
                           </div>
                           <div className="min-w-0">
                             <p className={`text-xs font-semibold ${
-                              notif.type === 'critical' ? 'text-red-500' : isDark ? 'text-yellow-400' : 'text-yellow-600'
+                              notif.type === 'critical'
+                                ? 'text-red-500'
+                                : notif.type === 'adjustment'
+                                ? isDark ? 'text-blue-400' : 'text-blue-600'
+                                : isDark ? 'text-yellow-400' : 'text-yellow-600'
                             }`}>
                               {notif.title}
                             </p>
                             <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
                               {notif.message}
                             </p>
+                            {notif.type === 'adjustment' && (
+                              <>
+                                <p className={`text-xs mt-1 leading-snug font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+                                  Reason: <span className="font-normal">{notif.reason}</span>
+                                </p>
+                                <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                                  By {notif.adjustedBy?.name} ({notif.adjustedBy?.role})
+                                </p>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))
@@ -220,7 +281,11 @@ const Navbar = ({ onMenuClick }) => {
                   {notifications.length > 0 && (
                     <div className={`px-4 py-2.5 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
                       <button
-                        onClick={() => { navigate('/admin/inventory'); setShowNotifications(false); }}
+                        onClick={() => {
+                          const path = user?.role === 'manager' ? '/manager/inventory' : '/admin/inventory';
+                          navigate(path);
+                          setShowNotifications(false);
+                        }}
                         className="w-full text-xs text-blue-500 hover:text-blue-600 font-medium text-center transition"
                       >
                         Go to Inventory Management →
