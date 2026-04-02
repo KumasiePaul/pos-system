@@ -1,6 +1,8 @@
 import Product from '../models/Product.js';
 import Inventory from '../models/Inventory.js';
 import * as XLSX from 'xlsx';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 // Get all products
 export const getAllProducts = async (req, res) => {
@@ -48,6 +50,19 @@ export const createProduct = async (req, res) => {
       supplier: supplier || ''
     });
 
+    const actor = await User.findById(req.user.id).select('name');
+    const targetRole = req.user.role === 'admin' ? 'manager' : 'admin';
+    await Notification.create({
+      targetRole,
+      type: 'product_created',
+      title: 'New Product Added',
+      message: `"${name}" has been added to the product catalog with an initial stock of ${quantity} unit(s).`,
+      adjustedBy: { name: actor?.name || req.user.role, role: req.user.role },
+      productName: name,
+      adjustment: quantity,
+      reason: `New product added to catalog`
+    });
+
     res.status(201).json({ message: 'Product created successfully', product });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -92,6 +107,18 @@ export const deleteProduct = async (req, res) => {
 
     // Also remove the inventory record for this product
     await Inventory.findOneAndDelete({ product: req.params.id });
+
+    const actor = await User.findById(req.user.id).select('name');
+    await Notification.create({
+      targetRole: 'manager',
+      type: 'product_deleted',
+      title: 'Product Removed',
+      message: `"${product.name}" has been permanently removed from the product catalog.`,
+      adjustedBy: { name: actor?.name || 'Admin', role: req.user.role },
+      productName: product.name,
+      adjustment: 0,
+      reason: `Product deleted from catalog`
+    });
 
     res.status(200).json({ message: 'Product deleted successfully' });
   } catch (error) {
@@ -154,6 +181,21 @@ export const bulkImportProducts = async (req, res) => {
       });
 
       imported.push(name);
+    }
+
+    if (imported.length > 0) {
+      const actor = await User.findById(req.user.id).select('name');
+      const targetRole = req.user.role === 'admin' ? 'manager' : 'admin';
+      await Notification.create({
+        targetRole,
+        type: 'product_bulk_import',
+        title: 'Bulk Product Import',
+        message: `${imported.length} product(s) were imported from a file${skipped.length > 0 ? `, ${skipped.length} skipped` : ''}.`,
+        adjustedBy: { name: actor?.name || req.user.role, role: req.user.role },
+        productName: `${imported.length} products`,
+        adjustment: imported.length,
+        reason: `Bulk import from file`
+      });
     }
 
     res.status(200).json({

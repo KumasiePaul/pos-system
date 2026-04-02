@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Sun, Moon, LogOut, User, X, AlertTriangle, Bell, Package, AlertCircle, ShoppingCart, ClipboardList } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, User, X, AlertTriangle, Bell, Package, AlertCircle, ShoppingCart, ClipboardList, UserPlus, UserX, UserCog, Boxes } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import useTheme from '../../hooks/useTheme';
 import { getLowStockItems } from '../../services/inventoryService';
@@ -57,15 +57,13 @@ const Navbar = ({ onMenuClick }) => {
           }
         });
 
-        // Stock adjustment notifications
+        // DB notifications (stock adjustments, updates, user & product events)
         adjustmentNotifs.forEach((notif) => {
-          const direction = notif.adjustment >= 0 ? `+${notif.adjustment}` : `${notif.adjustment}`;
           built.push({
             id: notif._id,
-            type: 'adjustment',
-            icon: 'clipboard',
-            title: 'Stock Adjusted',
-            message: `${notif.productName} adjusted by ${direction} units.`,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
             reason: notif.reason,
             adjustedBy: notif.adjustedBy,
             isRead: notif.isRead,
@@ -100,12 +98,12 @@ const Navbar = ({ onMenuClick }) => {
   const handleOpenNotifications = async () => {
     setShowNotifications((prev) => !prev);
     setUnreadCount(0);
-    // Mark adjustment notifications as read
     const token = localStorage.getItem('token');
-    if (token && notifications.some(n => n.type === 'adjustment' && !n.isRead)) {
+    const dbTypes = ['adjustment', 'stock_update', 'user_created', 'user_role_changed', 'user_deleted', 'product_created', 'product_deleted', 'product_bulk_import'];
+    if (token && notifications.some(n => dbTypes.includes(n.type) && !n.isRead)) {
       try {
         await markAllNotificationsAsRead(token);
-        setNotifications(prev => prev.map(n => n.type === 'adjustment' ? { ...n, isRead: true } : n));
+        setNotifications(prev => prev.map(n => dbTypes.includes(n.type) ? { ...n, isRead: true } : n));
       } catch {
         // silently fail
       }
@@ -117,9 +115,22 @@ const Navbar = ({ onMenuClick }) => {
     navigate('/login');
   };
 
-  const criticalCount    = notifications.filter((n) => n.type === 'critical').length;
-  const warningCount     = notifications.filter((n) => n.type === 'warning').length;
-  const adjustmentCount  = notifications.filter((n) => n.type === 'adjustment').length;
+  const criticalCount   = notifications.filter((n) => n.type === 'critical').length;
+  const warningCount    = notifications.filter((n) => n.type === 'warning').length;
+  const dbNotifTypes    = ['stock_adjustment', 'stock_update', 'user_created', 'user_role_changed', 'user_deleted', 'product_created', 'product_deleted', 'product_bulk_import'];
+  const activityCount   = notifications.filter((n) => dbNotifTypes.includes(n.type)).length;
+
+  const getNotifStyle = (type) => {
+    if (type === 'critical') return { bg: 'bg-red-100', text: 'text-red-500', icon: <AlertCircle size={14} /> };
+    if (type === 'warning')  return { bg: 'bg-yellow-100', text: isDark ? 'text-yellow-400' : 'text-yellow-600', icon: <Package size={14} /> };
+    if (type === 'user_created')      return { bg: 'bg-green-100', text: 'text-green-600', icon: <UserPlus size={14} /> };
+    if (type === 'user_deleted')      return { bg: 'bg-red-100',   text: 'text-red-500',   icon: <UserX size={14} /> };
+    if (type === 'user_role_changed') return { bg: 'bg-purple-100', text: 'text-purple-600', icon: <UserCog size={14} /> };
+    if (type === 'product_created' || type === 'product_bulk_import') return { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: <Boxes size={14} /> };
+    if (type === 'product_deleted')   return { bg: 'bg-orange-100', text: 'text-orange-600', icon: <Boxes size={14} /> };
+    // stock_adjustment, stock_update
+    return { bg: 'bg-blue-100', text: isDark ? 'text-blue-400' : 'text-blue-600', icon: <ClipboardList size={14} /> };
+  };
 
   return (
     <>
@@ -202,9 +213,9 @@ const Navbar = ({ onMenuClick }) => {
                           <Package size={11} /> {warningCount} Low Stock
                         </span>
                       )}
-                      {adjustmentCount > 0 && (
+                      {activityCount > 0 && (
                         <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                          <ClipboardList size={11} /> {adjustmentCount} Adjustment{adjustmentCount > 1 ? 's' : ''}
+                          <ClipboardList size={11} /> {activityCount} Activit{activityCount > 1 ? 'ies' : 'y'}
                         </span>
                       )}
                     </div>
@@ -220,60 +231,42 @@ const Navbar = ({ onMenuClick }) => {
                         </p>
                       </div>
                     ) : (
-                      notifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          onClick={() => {
-                            const path = user?.role === 'manager' ? '/manager/inventory' : '/admin/inventory';
-                            navigate(path);
-                            setShowNotifications(false);
-                          }}
-                          className={`flex items-start gap-3 px-4 py-3 cursor-pointer border-b last:border-0 transition ${
-                            isDark
-                              ? 'border-slate-700 hover:bg-slate-700'
-                              : 'border-gray-100 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className={`mt-0.5 p-1.5 rounded-lg flex-shrink-0 ${
-                            notif.type === 'critical'
-                              ? 'bg-red-100 text-red-500'
-                              : notif.type === 'adjustment'
-                              ? 'bg-blue-100 text-blue-600'
-                              : 'bg-yellow-100 text-yellow-600'
-                          }`}>
-                            {notif.type === 'critical'
-                              ? <AlertCircle size={14} />
-                              : notif.type === 'adjustment'
-                              ? <ClipboardList size={14} />
-                              : <Package size={14} />
-                            }
-                          </div>
-                          <div className="min-w-0">
-                            <p className={`text-xs font-semibold ${
-                              notif.type === 'critical'
-                                ? 'text-red-500'
-                                : notif.type === 'adjustment'
-                                ? isDark ? 'text-blue-400' : 'text-blue-600'
-                                : isDark ? 'text-yellow-400' : 'text-yellow-600'
-                            }`}>
-                              {notif.title}
-                            </p>
-                            <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                              {notif.message}
-                            </p>
-                            {notif.type === 'adjustment' && (
-                              <>
-                                <p className={`text-xs mt-1 leading-snug font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
-                                  Reason: <span className="font-normal">{notif.reason}</span>
-                                </p>
+                      notifications.map((notif) => {
+                        const style = getNotifStyle(notif.type);
+                        const isDbNotif = dbNotifTypes.includes(notif.type);
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => {
+                              const path = user?.role === 'manager' ? '/manager/inventory' : '/admin/inventory';
+                              navigate(path);
+                              setShowNotifications(false);
+                            }}
+                            className={`flex items-start gap-3 px-4 py-3 cursor-pointer border-b last:border-0 transition ${
+                              isDark
+                                ? 'border-slate-700 hover:bg-slate-700'
+                                : 'border-gray-100 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className={`mt-0.5 p-1.5 rounded-lg flex-shrink-0 ${style.bg} ${style.text}`}>
+                              {style.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <p className={`text-xs font-semibold ${style.text}`}>
+                                {notif.title}
+                              </p>
+                              <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                                {notif.message}
+                              </p>
+                              {isDbNotif && notif.adjustedBy && (
                                 <p className={`text-xs mt-0.5 leading-snug ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-                                  By {notif.adjustedBy?.name} ({notif.adjustedBy?.role})
+                                  By {notif.adjustedBy.name} ({notif.adjustedBy.role})
                                 </p>
-                              </>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 

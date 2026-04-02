@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
+import Notification from '../models/Notification.js';
 
 // Get all users
 export const getAllUsers = async (req, res) => {
@@ -41,6 +42,18 @@ export const createUser = async (req, res) => {
       role
     });
 
+    const admin = await User.findById(req.user.id).select('name');
+    await Notification.create({
+      targetRole: 'manager',
+      type: 'user_created',
+      title: 'New User Added',
+      message: `A new ${role} account was created for "${name}".`,
+      adjustedBy: { name: admin?.name || 'Admin', role: req.user.role },
+      productName: name,
+      adjustment: 0,
+      reason: `New ${role} account created`
+    });
+
     res.status(201).json({
       message: 'User created successfully',
       user: {
@@ -60,6 +73,8 @@ export const updateUser = async (req, res) => {
   try {
     const { name, email, role } = req.body;
 
+    const oldUser = await User.findById(req.params.id).select('name role');
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { name, email, role },
@@ -68,6 +83,21 @@ export const updateUser = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Only notify if the role actually changed
+    if (oldUser && role && oldUser.role !== role) {
+      const admin = await User.findById(req.user.id).select('name');
+      await Notification.create({
+        targetRole: 'manager',
+        type: 'user_role_changed',
+        title: 'User Role Changed',
+        message: `"${user.name}" role was changed from ${oldUser.role} to ${role}.`,
+        adjustedBy: { name: admin?.name || 'Admin', role: req.user.role },
+        productName: user.name,
+        adjustment: 0,
+        reason: `Role changed from ${oldUser.role} to ${role}`
+      });
     }
 
     res.status(200).json({
@@ -91,6 +121,18 @@ export const deleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    const admin = await User.findById(req.user.id).select('name');
+    await Notification.create({
+      targetRole: 'manager',
+      type: 'user_deleted',
+      title: 'User Removed',
+      message: `The ${user.role} account for "${user.name}" has been removed.`,
+      adjustedBy: { name: admin?.name || 'Admin', role: req.user.role },
+      productName: user.name,
+      adjustment: 0,
+      reason: `${user.role} account deleted`
+    });
 
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {

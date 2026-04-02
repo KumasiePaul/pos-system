@@ -79,6 +79,20 @@ export const updateStock = async (req, res) => {
       quantity: stockQuantity
     });
 
+    const actor = await User.findById(req.user.id).select('name');
+    const targetRole = req.user.role === 'admin' ? 'manager' : 'admin';
+    const productName = inventory.product?.name || 'Unknown Product';
+    await Notification.create({
+      targetRole,
+      type: 'stock_update',
+      title: 'Stock Updated',
+      message: `"${productName}" stock was set to ${stockQuantity} unit(s).`,
+      adjustedBy: { name: actor?.name || req.user.role, role: req.user.role },
+      productName,
+      adjustment: stockQuantity,
+      reason: `Stock manually set to ${stockQuantity}`
+    });
+
     res.status(200).json({ message: 'Stock updated successfully', inventory });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
