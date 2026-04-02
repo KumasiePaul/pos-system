@@ -76,7 +76,7 @@ const ManagerDashboard = () => {
       {/* Welcome Header */}
       <div className="mb-6">
         <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-blue-800'}`}>
-          Welcome back, {user?.name}! 👋
+          Welcome back, {user?.name}! 
         </h1>
         <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
           {new Date().toLocaleDateString('en-GH', {
